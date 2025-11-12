@@ -13,11 +13,12 @@
   },
   "general": {
     "designResolution": {
-      "width": 960,
-      "height": 640
+      "width": 720,
+      "height": 1280
     }
   },
   "script": {
     "preserveSymlinks": true
-  }
+  },
+  "custom_joint_texture_layouts": []
 }
