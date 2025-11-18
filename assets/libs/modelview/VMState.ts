@@ -182,7 +182,6 @@ export default class VMState extends VMBase {
             this.watchNodes.forEach((node, index) => {
                 let v = (this.foreachChildType === CHILD_MODE_TYPE.NODE_INDEX) ? index : node.name;
                 let check = this.conditionCheck(value, v);
-                //cc.log('遍历模式',value,node.name,check);
                 this.setNodeState(node, check);
             })
         } else {

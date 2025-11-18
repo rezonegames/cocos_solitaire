@@ -1,6 +1,6 @@
 import { instantiate, Node, Asset, Prefab } from "cc";
-import { ResKeeper } from "./res-keeper";
-import { CompleteCallback, ProgressCallback } from "./res-loader";
+import { ResKeeper } from "./ResKeeper";
+import { CompleteCallback, ProgressCallback } from "./ResLoader";
 export class ResUtil {
     /**
      * 开始加载资源

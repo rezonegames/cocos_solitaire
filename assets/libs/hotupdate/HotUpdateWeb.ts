@@ -1,7 +1,7 @@
 import {_decorator, director, Asset} from 'cc';
-import {HotUpdateBase} from "db://assets/scripts/hotupdate/HotUpdateBase";
 
-import {resLoader} from "db://assets/scripts/res/res-loader";
+import {resLoader} from "../res/ResLoader";
+import VMParent from "../modelview/VMParent";
 
 const {ccclass, property} = _decorator;
 
@@ -12,7 +12,21 @@ const {ccclass, property} = _decorator;
  * 逻辑：对比远程 manifest -> 有新版本 -> 刷新页面
  */
 @ccclass('HotUpdateWeb')
-export class HotUpdateWeb extends HotUpdateBase {
+export class HotUpdateWeb extends VMParent {
+
+    protected data = {
+        tip : "Hot update",
+        minBytes : 0,
+        maxBytes : 0,
+        byteLabel : '/',
+        minFile : 0,
+        maxFile : 0,
+        fileLabel : '/',
+        bundleName : "game1",
+        label1 : '',
+        label2 : '',
+        enterScene: "scene/main"
+    }
 
     private _taskList: string[] = [
         "scene",
@@ -26,7 +40,36 @@ export class HotUpdateWeb extends HotUpdateBase {
     ];
     private _total = this._taskList.length;
 
+    protected onInfo(info: string) {
+        this.data.tip = info;
+    };
+
+    protected setFileProgress(min: number, max: number): void {
+        this.data.minFile = min;
+        this.data.maxFile = max;
+        this.data.fileLabel = this.data.minFile + ' / ' + this.data.maxFile;
+    }
+
+    protected setByteProgress(min: number, max: number): void {
+        this.data.minBytes = min;
+        this.data.maxBytes = max;
+        this.data.byteLabel = this.data.minBytes + ' / ' + this.data.maxBytes;
+    }
+
+    protected enterGame() {
+        this.onInfo('所有资源加载完成，进入主场景...');
+        resLoader.loadScene(this.data.bundleName, this.data.enterScene, (err, scene) => {
+            if (!err) director.runScene(scene);
+        });
+    }
+
+    protected setLabel(label1: string, label2: string): void {
+        this.data.label1 = label1;
+        this.data.label2 = label2;
+    }
+
     onLoad() {
+        super.onLoad();
         // 远程需要下载
         this.onInfo('正在检查资源，并准备热梗...');
         this.checkUpdate();
@@ -49,7 +92,7 @@ export class HotUpdateWeb extends HotUpdateBase {
             return;
         }
         const dir = this._taskList.shift()!;
-        const bundleName = this._bundleName;
+        const bundleName = this.data.bundleName;
         this.setLabel('文件', '目录')
 
         this.onInfo(`正在加载目录：${dir}......`);

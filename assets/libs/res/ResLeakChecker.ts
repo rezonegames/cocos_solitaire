@@ -1,5 +1,5 @@
 import { Asset } from "cc";
-import { ResUtil } from "./res-util";
+import { ResUtil } from "./ResUtil";
 
 export type FilterCallback = (asset: Asset) => boolean;
 

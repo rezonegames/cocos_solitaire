@@ -1,5 +1,5 @@
 import { Asset, Component, _decorator } from "cc";
-import { AssetType, CompleteCallback, ProgressCallback, resLoader } from "./res-loader";
+import { AssetType, CompleteCallback, ProgressCallback, resLoader } from "./ResLoader";
 const { ccclass } = _decorator;
 
 @ccclass
