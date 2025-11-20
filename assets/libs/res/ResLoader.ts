@@ -135,6 +135,70 @@ export default class ResLoader {
     }
 
     /**
+     * 加载scene
+     * @param bundleName
+     * @param scenePath
+     * @param onComplete
+     */
+    public loadScene(bundleName: string, scenePath: string, onComplete: (err: Error | null, scene?: Scene) => void) {
+        const bundle = assetManager.getBundle(bundleName);
+        if (!bundle) {
+            // bundle 没有加载，先加载 bundle
+            assetManager.loadBundle(bundleName, (err, bundle) => {
+                if (err || !bundle) return onComplete(err || new Error('Failed to load bundle'));
+                bundle.loadScene(scenePath, onComplete);
+            });
+        } else {
+            bundle.loadScene(scenePath, onComplete);
+        }
+    }
+
+    public loadAsync<T extends Asset>(
+        bundleName: string,
+        paths: string | string[],
+        type?: AssetType<T> | null,
+    ): Promise<T>;
+
+    public loadAsync<T extends Asset>(
+        paths: string | string[],
+        type?: AssetType<T> | null,
+    ): Promise<T>;
+
+    public loadAsync<T extends Asset>(...args: any[]): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+
+            // 解析参数
+            let bundleName: string | null = null;
+            let paths: string | string[];
+            let type: AssetType<T> | null = null;
+
+            if (typeof args[0] === "string" && !(args[1] instanceof Array) && typeof args[1] === "string") {
+                // loadAsync(bundleName, paths, type)
+                bundleName = args[0];
+                paths = args[1];
+                type = args[2] ?? null;
+            } else {
+                // loadAsync(paths, type)
+                paths = args[0];
+                type = args[1] ?? null;
+            }
+
+            const onComplete = (err: Error | null, asset: any) => {
+                if (err) reject(err);
+                else resolve(asset);
+            };
+
+            // 调用原有 load
+            if (bundleName) {
+                this.load(bundleName, paths, type, null, onComplete);
+            } else {
+                this.load(paths, type, null, onComplete);
+            }
+        });
+    }
+
+
+    /**
      * 获取资源
      * @param path          资源路径
      * @param type          资源类型
@@ -146,16 +210,50 @@ export default class ResLoader {
         return bundle.get(path, type!);
     }
 
-    public loadScene(bundleName: string, scenePath: string, onComplete: (err: Error | null, scene?: Scene) => void) {
+    /**
+     * 通过相对文件夹路径删除所有文件夹中资源
+     * @param path          资源文件夹路径
+     * @param bundleName    远程资源包名
+     */
+    releaseDir(path: string, bundleName?: string) {
+        const bundle: AssetManager.Bundle | null = assetManager.getBundle(bundleName);
+        if (bundle) {
+            const infos = bundle.getDirWithPath(path);
+            if (infos) {
+                infos.map((info) => {
+                    this.releasePrefabtDepsRecursively(info.uuid);
+                });
+            }
+
+            if (path == "" && bundleName != "resources") {
+                assetManager.removeBundle(bundle);
+            }
+        }
+    }
+
+    /**
+     * 通过资源相对路径释放资源
+     * @param path          资源路径
+     * @param bundleName    远程资源包名
+     */
+    release(path: string, bundleName?: string) {
         const bundle = assetManager.getBundle(bundleName);
-        if (!bundle) {
-            // bundle 没有加载，先加载 bundle
-            assetManager.loadBundle(bundleName, (err, bundle) => {
-                if (err || !bundle) return onComplete(err || new Error('Failed to load bundle'));
-                bundle.loadScene(scenePath, onComplete);
-            });
-        } else {
-            bundle.loadScene(scenePath, onComplete);
+        if (bundle) {
+            const asset = bundle.get(path);
+            if (asset) {
+                this.releasePrefabtDepsRecursively(asset);
+            }
+        }
+    }
+
+    private releasePrefabtDepsRecursively(uuid: string | Asset) {
+        let asset: Asset | null | undefined;
+        if (uuid instanceof Asset) {
+            uuid.decRef();
+        }
+        else {
+            asset = assetManager.assets.get(uuid);
+            if (asset) asset.decRef();
         }
     }
 }

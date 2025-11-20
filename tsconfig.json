@@ -5,6 +5,7 @@
     "strict": false,
     "strictPropertyInitialization": false,
     "strictNullChecks": false,
+    "allowSyntheticDefaultImports": true
   }
   /* Add your custom configuration here. */
 }

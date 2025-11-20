@@ -2,6 +2,7 @@ import {_decorator, director, Asset} from 'cc';
 
 import {resLoader} from "../res/ResLoader";
 import VMParent from "../modelview/VMParent";
+import {uiManager} from "../ui/UIManager";
 
 const {ccclass, property} = _decorator;
 
@@ -25,7 +26,7 @@ export class HotUpdateWeb extends VMParent {
         bundleName : "game1",
         label1 : '',
         label2 : '',
-        enterScene: "scene/main"
+        enterScene: "scene/Game1"
     }
 
     private _taskList: string[] = [
@@ -58,6 +59,8 @@ export class HotUpdateWeb extends VMParent {
 
     protected enterGame() {
         this.onInfo('所有资源加载完成，进入主场景...');
+        uiManager.closeAll()
+        uiManager.clearCache()
         resLoader.loadScene(this.data.bundleName, this.data.enterScene, (err, scene) => {
             if (!err) director.runScene(scene);
         });
@@ -108,6 +111,7 @@ export class HotUpdateWeb extends VMParent {
 
             setTimeout(self.loadNextDir.bind(this), 100);
         };
+
         resLoader.loadDir(bundleName, dir, onProgress.bind(this), onFinish.bind(this));
     }
 

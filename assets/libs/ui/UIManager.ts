@@ -40,7 +40,7 @@ export class UIManager {
     /** 资源加载计数器，用于生成唯一的资源占用key */
     private useCount = 0;
     /** 背景UI（有若干层UI是作为背景UI，而不受切换等影响）*/
-    private BackGroundUI = 0;
+    private BackGroundUI = 1;
     /** 是否正在关闭UI */
     private isClosing = false;
     /** 是否正在打开UI */

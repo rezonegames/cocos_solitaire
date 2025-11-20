@@ -20,7 +20,7 @@ export class HotUpdate extends VMParent {
         bundleName: "game1",
         label1: '',
         label2: '',
-        enterScene: ""
+        enterScene: "scene/Game1"
     }
 
     @property(Asset)
@@ -60,6 +60,7 @@ export class HotUpdate extends VMParent {
         resLoader.loadScene(this._bundleName, this.data.enterScene, (err, scene) => {
             if (!err) director.runScene(scene);
         });
+
     }
 
     protected setLabel(label1: string, label2: string): void {

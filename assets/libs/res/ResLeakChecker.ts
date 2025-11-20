@@ -1,5 +1,6 @@
 import { Asset } from "cc";
 import { ResUtil } from "./ResUtil";
+import {logger} from "../log/Logger";
 
 export type FilterCallback = (asset: Asset) => boolean;
 
@@ -104,12 +105,8 @@ export class ResLeakChecker {
 
     public dump() {
         this.traceAssets.forEach(element => {
-            let traceMap: Map<string, number> | undefined = element.traceMap;
-            if (traceMap) {
-                traceMap.forEach((key, value) => {
-                    console.log(`${key} : ${value} `);                    
-                });
-            }
+            const traceMap: Map<string, number> | undefined = element.traceMap;
+            logger.trace(traceMap);
         })
     }
 }

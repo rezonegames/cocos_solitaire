@@ -1,4 +1,5 @@
 import { ISocket, MessageFunc, NetData } from "./NetInterface";
+import {logger} from "../log/Logger"
 
 /*
 *   WebSocket封装
@@ -20,7 +21,7 @@ export class WebSock implements ISocket {
     connect(options: any) {
         if (this._ws) {
             if (this._ws.readyState === WebSocket.CONNECTING) {
-                console.log("websocket connecting, wait for a moment...")
+                logger.logNet("websocket connecting, wait for a moment...")
                 return false;
             }
         }
