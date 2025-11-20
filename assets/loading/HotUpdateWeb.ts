@@ -1,8 +1,8 @@
 import {_decorator, director, Asset} from 'cc';
 
-import {resLoader} from "../res/ResLoader";
-import VMParent from "../modelview/VMParent";
-import {uiManager} from "../ui/UIManager";
+import {resLoader} from "../libs/res/ResLoader";
+import VMParent from "../libs/modelview/VMParent";
+import {uiManager} from "../libs/ui/UIManager";
 
 const {ccclass, property} = _decorator;
 

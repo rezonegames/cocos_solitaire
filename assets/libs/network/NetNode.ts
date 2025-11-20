@@ -154,7 +154,7 @@ export class NetNode {
         // logger.logNet(`NetNode onMessage status = ` + this._state);
         // 进行头部的校验（实际包长与头部长度是否匹配）
         if (!this._protocolHelper!.checkPackage(msg)) {
-            console.error(`NetNode checkHead Error`);
+            logger.logNet(`NetNode checkHead Error`);
             return;
         }
         // 接受到数据，重新定时收数据计时器
@@ -191,7 +191,7 @@ export class NetNode {
     }
 
     protected onError(event : any) {
-        console.error(event);
+        logger.logNet(event);
     }
 
     protected onClosed(event : any) {
@@ -257,7 +257,7 @@ export class NetNode {
             logger.logNet("NetNode socket is busy, push to send buffer, current state is " + this._state);
             return 0;
         } else {
-            console.error("NetNode request error! current state is " + this._state);
+            logger.logNet("NetNode request error! current state is " + this._state);
             return -1;
         }
     }
@@ -293,7 +293,7 @@ export class NetNode {
     /********************** 回调相关处理 *********************/
     public setResponeHandler(cmd: number, callback: NetCallFunc, target?: any): boolean {
         if (callback == null) {
-            console.error(`NetNode setResponeHandler error ${cmd}`);
+            logger.logNet(`NetNode setResponeHandler error ${cmd}`);
             return false;
         }
         this._listener[cmd] = [{ target, callback }];
@@ -302,7 +302,7 @@ export class NetNode {
 
     public addResponeHandler(cmd: number, callback: NetCallFunc, target?: any): boolean {
         if (callback == null) {
-            console.error(`NetNode addResponeHandler error ${cmd}`);
+            logger.logNet(`NetNode addResponeHandler error ${cmd}`);
             return false;
         }
         let rspObject = { target, callback };
@@ -354,7 +354,7 @@ export class NetNode {
         }
 
         this._receiveMsgTimer = setTimeout(() => {
-            console.warn("NetNode recvieMsgTimer close socket!");
+            logger.logNet("NetNode recvieMsgTimer close socket!");
             this._socket!.close();
         }, this._receiveTime);
     }

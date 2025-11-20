@@ -73,7 +73,6 @@ export class JsonUtil {
             else {
                 resLoader.loadDir(pathJson, (err: Error | null, assets: JsonAsset[]) => {
                     if (err) {
-                        console.error(err.message);
                         resolve();
                     }
                     else {

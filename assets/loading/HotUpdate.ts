@@ -1,8 +1,8 @@
 const jsb = (<any>window).jsb;
 
 import {_decorator, Asset, game, log, director} from 'cc';
-import {resLoader} from "../res/ResLoader";
-import VMParent from "../modelview/VMParent";
+import {resLoader} from "../libs/res/ResLoader";
+import VMParent from "../libs/modelview/VMParent";
 
 const {ccclass, property,} = _decorator;
 

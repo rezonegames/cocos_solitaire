@@ -1,5 +1,6 @@
 import {JsonOb} from './JsonOb';
 import {log, director,} from 'cc';
+import {logger} from '../log/Logger'
 
 const VM_EMIT_HEAD = 'VC:';
 const DEBUG_SHOW_PATH = false;
@@ -11,7 +12,7 @@ function setValueFromPath(obj: any, path: string, value: any, tag: string = '') 
     for (let i = 0; i < props.length; i++) {
         const propName = props[i];
         if (propName in obj === false) {
-            console.error('[' + propName + '] not find in ' + tag + '.' + path);
+            logger.trace('[' + propName + '] not find in ' + tag + '.' + path);
             break;
         }
         if (i == props.length - 1) {
@@ -29,7 +30,7 @@ function getValueFromPath(obj: any, path: string, def?: any, tag: string = ''): 
     for (let i = 0; i < props.length; i++) {
         const propName = props[i];
         if ((propName in obj === false)) {
-            console.error('[' + propName + '] not find in ' + tag + '.' + path);
+            logger.trace('[' + propName + '] not find in ' + tag + '.' + path);
             return def;
         }
         obj = obj[propName];
@@ -112,11 +113,11 @@ class VMManager {
         let vm = new ViewModel<T>(data, tag);
         let has = this._mvs.find(v => v.tag === tag);
         if (tag.includes('.')) {
-            console.error('cant write . in tag:', tag);
+            logger.trace('cant write . in tag:', tag);
             return;
         }
         if (has) {
-            console.error('already set VM tag:' + tag);
+            logger.trace('already set VM tag:' + tag);
             return;
         }
 
@@ -141,7 +142,7 @@ class VMManager {
     get<T>(tag: string): ViewModel<T> {
         let res = this._mvs.find(v => v.tag === tag);
         if (res == null) {
-            console.error('cant find VM from:', tag);
+            logger.trace('cant find VM from:', tag);
         } else {
             return res.vm;
         }
@@ -156,11 +157,11 @@ class VMManager {
         path = path.trim();//防止空格,自动剔除
         let rs = path.split('.');
         if (rs.length < 2) {
-            console.error('Cant find path:' + path)
+            logger.trace('Cant find path:' + path)
         }
         let vm = this.get(rs[0]);
         if (!vm) {
-            console.error('Cant Set VM:' + rs[0]);
+            logger.trace('Cant Set VM:' + rs[0]);
             return;
         }
         let resPath = rs.slice(1).join('.');
@@ -176,12 +177,12 @@ class VMManager {
         path = path.trim();//防止空格,自动剔除
         let rs = path.split('.');
         if (rs.length < 2) {
-            console.error('Get Value Cant find path:' + path);
+            logger.trace('Get Value Cant find path:' + path);
             return;
         }
         let vm = this.get(rs[0]);
         if (!vm) {
-            console.error('Cant Get VM:' + rs[0]);
+            logger.trace('Cant Get VM:' + rs[0]);
             return;
         }
         return vm.getValue(rs.slice(1).join('.'), def);
@@ -196,12 +197,12 @@ class VMManager {
         path = path.trim();//防止空格,自动剔除
         let rs = path.split('.');
         if (rs.length < 2) {
-            console.error('Set Value Cant find path:' + path);
+            logger.trace('Set Value Cant find path:' + path);
             return;
         }
         let vm = this.get(rs[0]);
         if (!vm) {
-            console.error('Cant Set VM:' + rs[0]);
+            logger.trace('Cant Set VM:' + rs[0]);
             return;
         }
         vm.setValue(rs.slice(1).join('.'), value);
@@ -215,11 +216,11 @@ class VMManager {
     bindPath<TFunction extends (...args: any[]) => void>(path: string, callback: TFunction, target?: any, useCapture?: boolean): void {
         path = path.trim();//防止空格,自动剔除
         if (path == '') {
-            console.error(target.node.name, '节点绑定的路径为空');
+            logger.trace(target.node.name, '节点绑定的路径为空');
             return;
         }
         if (path.split('.')[0] === '*') {
-            console.error(path, '路径不合法,可能错误覆盖了 VMParent 的onLoad 方法, 或者父节点并未挂载 VMParent 相关的组件脚本');
+            logger.trace(path, '路径不合法,可能错误覆盖了 VMParent 的onLoad 方法, 或者父节点并未挂载 VMParent 相关的组件脚本');
             return;
         }
         director.on(VM_EMIT_HEAD + path, callback, target, useCapture);
@@ -229,7 +230,7 @@ class VMManager {
     unbindPath<TFunction extends (...args: any[]) => void>(path: string, callback: TFunction, target?: any): void {
         path = path.trim();//防止空格,自动剔除
         if (path.split('.')[0] === '*') {
-            console.error(path, '路径不合法,可能错误覆盖了 VMParent 的onLoad 方法, 或者父节点并未挂载 VMParent 相关的组件脚本');
+            logger.trace(path, '路径不合法,可能错误覆盖了 VMParent 的onLoad 方法, 或者父节点并未挂载 VMParent 相关的组件脚本');
             return;
         }
         director.off(VM_EMIT_HEAD + path, callback, target);

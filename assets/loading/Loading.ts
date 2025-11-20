@@ -1,19 +1,27 @@
-import {_decorator, Component, Node} from 'cc';
-import {uiManager} from "../libs/ui/UIManager";
+import {_decorator, Component, sys} from 'cc';
+import {storageManager}  from '../libs/storage/StorageManager';
+import {languageManager} from "db://assets/libs/language/Language";
+import {HotUpdate} from "db://assets/loading/HotUpdate";
+import {HotUpdateWeb} from "db://assets/loading/HotUpdateWeb";
+
 
 const {ccclass, property} = _decorator;
 
 @ccclass('Loading')
 export class Loading extends Component {
 
-    onLoad(): void {
-        const Loading = -1;
 
-        uiManager.initUIConf({
-            [Loading]: {bundle: 'loading', prefab: "UpdatePanel"},
-        })
+    async onLoad() {
+        // 初始化
+        const language = storageManager.get('language', 'en');
+        await languageManager.setLanguage('loading', language);
 
-        uiManager.open(Loading);
+        // 开始热梗
+        if (sys.isNative) {
+            this.addComponent(HotUpdate);
+        } else {
+            this.addComponent(HotUpdateWeb);
+        }
     }
 
     start() {

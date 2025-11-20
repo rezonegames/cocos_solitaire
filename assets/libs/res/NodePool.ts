@@ -1,5 +1,6 @@
 import { isValid, error, instantiate, Prefab, Node } from "cc";
 import { resLoader } from "./ResLoader";
+import {logger} from "../log/Logger";
 
 export type NodePoolCallback = (error: Error | null, nodePool: NodePool) => void;
 
@@ -34,7 +35,7 @@ export class NodePool {
             });
             return;
         }
-        console.error(`NodePool init error ${arguments[0]}`);
+        logger.trace(`NodePool init error ${arguments[0]}`);
     }
 
     /**

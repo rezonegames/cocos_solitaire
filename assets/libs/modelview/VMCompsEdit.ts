@@ -1,5 +1,6 @@
 import {_decorator, Component, log, Enum, Node, CCString} from 'cc';
 import {EDITOR} from 'cc/env'
+import {logger} from '../log/Logger'
 
 const {ccclass, property, executeInEditMode, menu, help} = _decorator;
 
@@ -153,7 +154,7 @@ export default class MVCompsEdit extends Component {
         //不要把脚本挂载运行时的提示
         if (!EDITOR) {
             let path = this.getNodePath(this.node);
-            console.error('you forget delete MVEditFinder,[path]', path);
+            logger.trace('you forget delete MVEditFinder,[path]', path);
         }
     }
 

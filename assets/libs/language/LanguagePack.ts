@@ -10,10 +10,10 @@ export class LanguagePack {
      * @param lang
      */
     updateLanguage(lang: string) {
-        let rootNodes = director.getScene()!.children;
+        const rootNodes = director.getScene()!.children;
         for (let i = 0; i < rootNodes.length; ++i) {
             LanguageType.forEach(type => {
-                let comps: any[] = rootNodes[i].getComponentsInChildren(type);
+                const comps: any[] = rootNodes[i].getComponentsInChildren(type);
                 for (let j = 0; j < comps.length; j++) {
                     comps[j].language();
                 }
@@ -24,38 +24,20 @@ export class LanguagePack {
     /**
      * 下载对应语言包资源
      * @param lang 语言标识
-     * @param callback 下载完成回调
      */
-    async loadLanguageAssets(lang: string, callback: Function) {
-        await this.loadTexture(lang);
-        await this.loadSpine(lang);
-        await this.loadJson(lang);
-        await this.loadTable(lang);
-
-        callback(lang);
-    }
-
-    /** 多语言Excel配置表数据 */
-    private loadTable(lang: string): Promise<void> {
-        return new Promise(async (resolve, reject) => {
-            let json = await JsonUtil.load("Language");
-            if (json) {
-                LanguageData.language.set(LanguageDataType.Excel, json);
-                logger.logConfig("config/game/Language", "下载语言包 table 资源");
-            }
-            resolve();
-        });
+    async loadLanguageAssets(bundleName: string, lang: string) {
+        await this.loadTexture(bundleName, lang);
+        await this.loadSpine(bundleName, lang);
+        await this.loadJson(bundleName, lang);
     }
 
     /** 纹理多语言资源 */
-    private loadTexture(lang: string): Promise<void> {
+    private loadTexture(bundleName: string, lang: string): Promise<void> {
         return new Promise((resolve, reject) => {
             const path = `${LanguageData.path_texture}/${lang}`;
-            resLoader.loadDir(path, (err: any, assets: any) => {
+            resLoader.loadDir(bundleName, path, (err: any, assets: any) => {
                 if (err) {
-                    error(err);
-                    resolve();
-                    return;
+                    reject(err);
                 }
                 logger.logConfig(path, "下载语言包 textures 资源");
                 resolve();
@@ -64,17 +46,17 @@ export class LanguagePack {
     }
 
     /** Json格式多语言资源 */
-    private loadJson(lang: string): Promise<void> {
+    private loadJson(bundleName: string, lang: string): Promise<void> {
         return new Promise(async (resolve, reject) => {
             const path = `${LanguageData.path_json}/${lang}`;
-            resLoader.load<JsonAsset>(path, (err: any, langJson: any) => {
+            resLoader.load<JsonAsset>(bundleName, path, (err: any, langJson: any) => {
                 if (err) {
                     reject(err);
                 }
                 LanguageData.language.set(LanguageDataType.Json, langJson);
                 logger.logConfig(path, "下载语言包 json 资源");
 
-                resLoader.load<TTFFont>(path, (err: any, font: any) => {
+                resLoader.load<TTFFont>(bundleName, path, (err: any, font: any) => {
                     if (err) {
                         reject(err);
                     }
@@ -88,14 +70,12 @@ export class LanguagePack {
     }
 
     /** SPINE动画多语言资源 */
-    private loadSpine(lang: string): Promise<void> {
+    private loadSpine(bundleName: string, lang: string): Promise<void> {
         return new Promise(async (resolve, reject) => {
             const path = `${LanguageData.path_spine}/${lang}`;
             resLoader.loadDir(path, (err: any, assets: any) => {
                 if (err) {
-                    error(err);
-                    resolve();
-                    return;
+                    reject(err);
                 }
                 logger.logConfig(path, "下载语言包 spine 资源");
                 resolve();
@@ -107,22 +87,16 @@ export class LanguagePack {
      * 释放某个语言的语言包资源包括json
      * @param lang
      */
-    releaseLanguageAssets(lang: string) {
-        let langTexture = `${LanguageData.path_texture}/${lang}`;
-        resLoader.releaseDir(langTexture);
+    releaseLanguageAssets(bundleName: string, lang: string) {
+        const langTexture = `${LanguageData.path_texture}/${lang}`;
+        resLoader.releaseDir(langTexture, bundleName);
 
-        let langJson = `${LanguageData.path_json}/${lang}`;
-        let json = resLoader.get(langJson, JsonAsset);
-        if (json) {
-            json.decRef();
-        }
-
-        let font = resLoader.get(langJson, TTFFont);
-        if (font) {
-            font.decRef();
-        }
-
-        let langSpine = `${LanguageData.path_spine}/${lang}`;
-        resLoader.release(langSpine);
+        const langJson = `${LanguageData.path_json}/${lang}`;
+        const json = resLoader.get(bundleName, langJson, JsonAsset);
+        if (json) json.decRef();
+        const font = resLoader.get(bundleName, langJson, TTFFont);
+        if (font) font.decRef();
+        const langSpine = `${LanguageData.path_spine}/${lang}`;
+        resLoader.release(langSpine, bundleName);
     }
 }

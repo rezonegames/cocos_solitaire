@@ -128,12 +128,6 @@ export default class ResLoader {
         this.loadByArgs(args);
     }
 
-    public loadRemote<T extends Asset>(url: string, options: IRemoteOptions | null, onComplete?: CompleteCallback<T> | null): void;
-    public loadRemote<T extends Asset>(url: string, onComplete?: CompleteCallback<T> | null): void;
-    public loadRemote(url: string, ...args: any): void {
-        assetManager.loadRemote(url, args);
-    }
-
     /**
      * 加载scene
      * @param bundleName
@@ -153,17 +147,11 @@ export default class ResLoader {
         }
     }
 
-    public loadAsync<T extends Asset>(
-        bundleName: string,
-        paths: string | string[],
-        type?: AssetType<T> | null,
-    ): Promise<T>;
-
-    public loadAsync<T extends Asset>(
-        paths: string | string[],
-        type?: AssetType<T> | null,
-    ): Promise<T>;
-
+    /**
+     * 异步加载当个文件资源（支持 onProgress）
+     */
+    public loadAsync<T extends Asset>(bundleName: string, paths: string | string[], type?: AssetType<T> | null, onProgress?: ProgressCallback | null): Promise<T>;
+    public loadAsync<T extends Asset>(paths: string | string[], type?: AssetType<T> | null, onProgress?: ProgressCallback | null): Promise<T>;
     public loadAsync<T extends Asset>(...args: any[]): Promise<T> {
         return new Promise<T>((resolve, reject) => {
 
@@ -171,16 +159,19 @@ export default class ResLoader {
             let bundleName: string | null = null;
             let paths: string | string[];
             let type: AssetType<T> | null = null;
+            let onProgress: ProgressCallback | null = null;
 
             if (typeof args[0] === "string" && !(args[1] instanceof Array) && typeof args[1] === "string") {
                 // loadAsync(bundleName, paths, type)
                 bundleName = args[0];
                 paths = args[1];
                 type = args[2] ?? null;
+                onProgress = args[3] ?? null;
             } else {
                 // loadAsync(paths, type)
                 paths = args[0];
                 type = args[1] ?? null;
+                onProgress = args[2] ?? null;
             }
 
             const onComplete = (err: Error | null, asset: any) => {
@@ -190,13 +181,65 @@ export default class ResLoader {
 
             // 调用原有 load
             if (bundleName) {
-                this.load(bundleName, paths, type, null, onComplete);
+                this.load(bundleName, paths, type, onProgress, onComplete);
             } else {
-                this.load(paths, type, null, onComplete);
+                this.load(paths, type, onProgress, onComplete);
             }
         });
     }
 
+    /**
+     * 异步加载整个文件夹资源（支持 onProgress）
+     */
+    public loadDirAsync<T extends Asset>(bundleName: string, dir: string, type?: AssetType<T> | null, onProgress?: ProgressCallback | null): Promise<T[]>;
+    public loadDirAsync<T extends Asset>(dir: string, type?: AssetType<T> | null, onProgress?: ProgressCallback | null): Promise<T[]>;
+    public loadDirAsync<T extends Asset>(...args: any[]): Promise<T[]> {
+        return new Promise<T[]>((resolve, reject) => {
+
+            let bundleName: string | null = null;
+            let dir: string;
+            let type: AssetType<T> | null = null;
+            let onProgress: ProgressCallback | null = null;
+
+            // 参数解析
+            if (typeof args[0] === "string" && typeof args[1] === "string") {
+                // loadDirAsync(bundleName, dir, type?, onProgress?)
+                bundleName = args[0];
+                dir = args[1];
+                type = args[2] ?? null;
+                onProgress = args[3] ?? null;
+            } else {
+                // loadDirAsync(dir, type?, onProgress?)
+                dir = args[0];
+                type = args[1] ?? null;
+                onProgress = args[2] ?? null;
+            }
+
+            const onComplete = (err: Error | null, assets: T[]) => {
+                if (err) reject(err);
+                else resolve(assets);
+            };
+
+            // 调用原本的 loadDir
+            if (bundleName) {
+                this.loadDir(bundleName, dir, type, onProgress, onComplete);
+            } else {
+                this.loadDir(dir, type, onProgress, onComplete);
+            }
+        });
+    }
+
+    /**
+     * 加载远程资源
+     * @param url
+     * @param options
+     * @param onComplete
+     */
+    public loadRemote<T extends Asset>(url: string, options: IRemoteOptions | null, onComplete?: CompleteCallback<T> | null): void;
+    public loadRemote<T extends Asset>(url: string, onComplete?: CompleteCallback<T> | null): void;
+    public loadRemote(url: string, ...args: any): void {
+        assetManager.loadRemote(url, args);
+    }
 
     /**
      * 获取资源
@@ -204,9 +247,9 @@ export default class ResLoader {
      * @param type          资源类型
      * @param bundleName    远程资源包名
      */
-    get<T extends Asset>(path: string, type?: __private.__types_globals__Constructor<T> | null, bundleName?: string): T | null {
-        if (bundleName == null) return null;
+    get<T extends Asset>(bundleName: string, path: string, type?: __private.__types_globals__Constructor<T> | null): T | null {
         let bundle: AssetManager.Bundle = assetManager.getBundle(bundleName)!;
+        if (!bundle) bundle = resources;
         return bundle.get(path, type!);
     }
 
@@ -250,8 +293,7 @@ export default class ResLoader {
         let asset: Asset | null | undefined;
         if (uuid instanceof Asset) {
             uuid.decRef();
-        }
-        else {
+        } else {
             asset = assetManager.assets.get(uuid);
             if (asset) asset.decRef();
         }

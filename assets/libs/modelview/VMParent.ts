@@ -45,13 +45,10 @@ export default class VMParent extends Component {
         //cc.log(VM['_mvs'],tag)
         //搜寻所有节点：找到 watch path
         let comps = this.getVMComponents();
-        //console.group();
         for (let i = 0; i < comps.length; i++) {
             const comp = comps[i];
             this.replaceVMPath(comp, this.tag)
         }
-        //console.groupEnd()
-
         this.onBind();
     }
 

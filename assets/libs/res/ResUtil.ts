@@ -1,5 +1,6 @@
 import { instantiate, Node, Asset, Prefab } from "cc";
 import { ResKeeper } from "./ResKeeper";
+import {logger} from '../log/Logger';
 import { CompleteCallback, ProgressCallback } from "./ResLoader";
 export class ResUtil {
     /**
@@ -57,7 +58,7 @@ export class ResUtil {
             keeper.cacheAsset(srcAsset);
             return srcAsset;
         } else {
-            console.error(`assignWith ${srcAsset} to ${targetNode} faile`);
+            logger.trace(`assignWith ${srcAsset} to ${targetNode} fail`);
             return null;
         }
     }

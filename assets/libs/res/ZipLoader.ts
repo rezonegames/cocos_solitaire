@@ -1,5 +1,6 @@
 import { BufferAsset, SpriteFrame, Texture2D } from "cc";
 import { resLoader } from "./ResLoader";
+import {logger} from '../log/Logger';
 import JSZip from "jszip";
 
 /** 
@@ -35,34 +36,34 @@ export class ZipLoader {
 
     static getJson(zipName: string, path: string): Promise<any> {
         return new Promise(async (resolve, reject) => {
-            var zip = this.zips.get(zipName);
+            const zip = this.zips.get(zipName);
             if (zip == null) {
-                console.error(`名为【${zipName}】的资源包不存在`);
+                logger.trace(`名为【${zipName}】的资源包不存在`);
                 resolve(null);
                 return;
             }
 
-            var file = zip.file(path);
-            var json = JSON.parse(await file.async("text"));
+            const file = zip.file(path);
+            const json = JSON.parse(await file.async("text"));
             resolve(json);
         });
     }
 
     static getSpriteFrame(zipName: string, path: string): Promise<SpriteFrame> {
         return new Promise(async (resolve, reject) => {
-            var zip = this.zips.get(zipName);
+            const zip = this.zips.get(zipName);
             if (zip == null) {
-                console.error(`名为【${zipName}】的资源包不存在`);
+                logger.trace(`名为【${zipName}】的资源包不存在`);
                 resolve(null!);
                 return;
             }
 
-            var file = zip.file(path);
-            var buf = await file.async("base64");
-            var img = new Image();
+            const file = zip.file(path);
+            const buf = await file.async("base64");
+            const img = new Image();
             img.src = 'data:image/png;base64,' + buf;
             img.onload = () => {
-                var texture = new Texture2D();
+                const texture = new Texture2D();
                 texture.reset({
                     width: img.width,
                     height: img.height
@@ -70,7 +71,7 @@ export class ZipLoader {
                 texture.uploadData(img, 0, 0);
                 texture.loaded = true;
 
-                var sf = new SpriteFrame();
+                const sf = new SpriteFrame();
                 sf.texture = texture;
 
                 resolve(sf);

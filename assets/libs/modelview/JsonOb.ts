@@ -1,8 +1,9 @@
+import {logger} from '../log/Logger'
+
 /**
  * 实现动态绑定的核心部分，
  * 每次修改属性值，都会调用对应函数，并且获取值的路径
  */
-
 const OP = Object.prototype;
 const types = {
     obj: '[object Object]',
@@ -17,7 +18,7 @@ const OAM = ['push', 'pop', 'shift', 'unshift', 'sort', 'reverse', 'splice'];
 export class JsonOb<T> {
     constructor(obj: T, callback: (newVal: any, oldVal: any, pathArray: string[]) => void) {
         if (OP.toString.call(obj) !== types.obj && OP.toString.call(obj) !== types.array) {
-            console.error('请传入一个对象或数组');
+            logger.trace('请传入一个对象或数组');
         }
         this._callback = callback;
         this.observe(obj);

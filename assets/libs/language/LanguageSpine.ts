@@ -2,6 +2,7 @@ import { CCString, Component, _decorator, sp } from "cc";
 import { EDITOR } from "cc/env";
 import { resLoader } from "../res/ResLoader";
 import { LanguageData } from "./LanguageData";
+import {logger} from '../log/Logger'
 
 const { ccclass, property, menu } = _decorator;
 
@@ -42,14 +43,14 @@ export class LanguageSpine extends Component {
     private updateSpine() {
         // 获取语言标记
         let path = `language/spine/${LanguageData.current}/${this.dataID}`;
-        let res: sp.SkeletonData | null = resLoader.get(path, sp.SkeletonData);
+        let res: sp.SkeletonData | null = resLoader.get(LanguageData.bundleName, path, sp.SkeletonData);
         if (res) {
             let spine: sp.Skeleton = this.getComponent(sp.Skeleton)!;
             spine.skeletonData = res;
             spine.setAnimation(0, this._defaultAnimation, true);
         }
         else {
-            console.error("[LanguageSpine] 资源不存在 " + path);
+            logger.logConfig("[LanguageSpine] 资源不存在 " + path);
         }
     }
 }

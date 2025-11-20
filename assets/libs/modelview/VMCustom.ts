@@ -1,6 +1,7 @@
 import VMBase from './VMBase';
 import {_decorator, Toggle} from 'cc';
 import {EDITOR} from 'cc/env';
+import {logger} from '../log/Logger'
 
 const {ccclass, property, executeInEditMode, menu, help} = _decorator;
 
@@ -118,15 +119,15 @@ export default class VMCustom extends VMBase {
     checkComponentState() {
         this._canWatchComponent = false;
         if (!this._watchComponent) {
-            console.error('未设置需要监听的组件');
+            logger.trace('未设置需要监听的组件');
             return;
         }
         if (!this.componentProperty) {
-            console.error('未设置需要监听的组件 的属性');
+            logger.trace('未设置需要监听的组件 的属性');
             return;
         }
         if (this.componentProperty in this._watchComponent === false) {
-            console.error('需要监听的组件的属性不存在');
+            logger.trace('需要监听的组件的属性不存在');
             return;
         }
         this._canWatchComponent = true;

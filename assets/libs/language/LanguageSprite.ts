@@ -1,5 +1,6 @@
 import { CCString, Component, Size, Sprite, SpriteFrame, UITransform, _decorator } from "cc";
 import { EDITOR } from "cc/env";
+import {logger} from '../log/Logger';
 import { resLoader } from "../res/ResLoader";
 import { LanguageData } from "./LanguageData";
 
@@ -39,7 +40,7 @@ export class LanguageSprite extends Component {
     private updateSprite() {
         // 获取语言标记
         let path = `language/texture/${LanguageData.current}/${this.dataID}/spriteFrame`;
-        let res: SpriteFrame | null = resLoader.get(path, SpriteFrame);
+        let res: SpriteFrame | null = resLoader.get(LanguageData.bundleName, path, SpriteFrame);
         if (res) {
             let spcomp: Sprite = this.getComponent(Sprite)!;
             spcomp.spriteFrame = res;
@@ -52,7 +53,7 @@ export class LanguageSprite extends Component {
             }
         }
         else {
-            console.error("[LanguageSprite] 资源不存在 " + path);
+            logger.logConfig("[LanguageSprite] 资源不存在 " + path);
         }
     }
 }

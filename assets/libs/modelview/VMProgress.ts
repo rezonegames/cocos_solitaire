@@ -1,5 +1,6 @@
 import VMCustom from "./VMCustom";
 import {StringFormatFunction} from "./StringFormat";
+import {logger} from '../log/Logger'
 
 import {_decorator, CCString} from 'cc';
 import {EDITOR} from 'cc/env';
@@ -40,7 +41,7 @@ export default class VMProgress extends VMCustom {
     onLoad() {
         //cc.log(this.watchPathArr)
         if (this.watchPathArr.length < 2 || this.watchPathArr[0] == '[min]' || this.watchPathArr[1] == '[max]') {
-            console.error('VMProgress must have two values!');
+            logger.trace('VMProgress must have two values!');
         }
         super.onLoad();
     }

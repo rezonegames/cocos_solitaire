@@ -1,10 +1,10 @@
-import { sys } from "cc";
+import {sys} from "cc";
 import {logger} from "../log/Logger";
-import { LanguageData } from "./LanguageData";
-import { LanguagePack } from "./LanguagePack";
+import {LanguageData} from "./LanguageData";
+import {LanguagePack} from "./LanguagePack";
 
 /** 多语言管理器 */
-export class LanguageManager {
+class LanguageManager {
     private _languages: Array<string> = [sys.Language.CHINESE, sys.Language.ENGLISH];      // 支持的语言
     private _languagePack: LanguagePack = new LanguagePack();                              // 语言包
     private _defaultLanguage: string = sys.Language.CHINESE;                               // 默认语言
@@ -13,6 +13,7 @@ export class LanguageManager {
     get languages(): string[] {
         return this._languages;
     }
+
     set languages(languages: Array<string>) {
         this._languages = languages;
     }
@@ -43,49 +44,51 @@ export class LanguageManager {
 
     /** 获取下一个语种 */
     getNextLang(): string {
-        let supportLangs = this.languages;
-        let index = supportLangs.indexOf(LanguageData.current);
+        const supportLangs = this.languages;
+        const index = supportLangs.indexOf(LanguageData.current);
         return supportLangs[(index + 1) % supportLangs.length];
     }
 
     /**
      * 改变语种，会自动下载对应的语种
+     * @param bundleName 所在的bundle
      * @param language 语言名
-     * @param callback 多语言资源数据加载完成回调
      */
-    setLanguage(language: string, callback?: Function) {
+    setLanguage(bundleName: string, language: string): Promise<void> {
         if (language == null || language == "") {
             language = this._defaultLanguage;
-        }
-        else {
+        } else {
             language = language.toLowerCase();
         }
 
-        let index = this.languages.indexOf(language);
+        const index = this.languages.indexOf(language);
         if (index < 0) {
             logger.logConfig(`当前不支持【${language}】语言，将自动切换到【${this._defaultLanguage}】语言`);
             language = this._defaultLanguage;
         }
 
-        if (language === LanguageData.current) {
-            callback && callback();
-            return;
-        }
-
-        this.loadLanguageAssets(language, (lang: string) => {
-            logger.logConfig(`当前语言为【${language}】`);
-            const oldLanguage = LanguageData.current;
-            LanguageData.current = language;
-            this._languagePack.updateLanguage(language);
-            this._languagePack.releaseLanguageAssets(oldLanguage);
-            callback && callback();
-        });
+        return new Promise((resolve, reject) => {
+            if (bundleName === LanguageData.bundleName && language === LanguageData.current) {
+                resolve();
+                return;
+            }
+            this.loadLanguageAssets(bundleName, language).then((_)=>{
+                logger.logConfig(`当前语言为【${language}】`);
+                const oldLanguage = LanguageData.current;
+                const oldBundleName = LanguageData.bundleName;
+                LanguageData.current = language;
+                LanguageData.bundleName = bundleName;
+                this._languagePack.updateLanguage(language);
+                this._languagePack.releaseLanguageAssets(oldBundleName, oldLanguage);
+                resolve();
+            }).catch(reject);
+        })
     }
 
     /**
      * 根据data获取对应语种的字符
-     * @param labId 
-     * @param arr 
+     * @param labId
+     * @param arr
      */
     getLangByID(labId: string): string {
         return LanguageData.getLangByID(labId);
@@ -94,20 +97,21 @@ export class LanguageManager {
     /**
      * 下载语言包素材资源
      * 包括语言json配置和语言纹理包
-     * @param lang 
-     * @param callback 
+     * @param lang
      */
-    loadLanguageAssets(lang: string, callback: Function) {
+    async loadLanguageAssets(bundleName: string, lang: string) {
         lang = lang.toLowerCase();
-        return this._languagePack.loadLanguageAssets(lang, callback);
+        return await this._languagePack.loadLanguageAssets(bundleName, lang);
     }
 
     /**
      * 释放不需要的语言包资源
-     * @param lang 
+     * @param lang
      */
-    releaseLanguageAssets(lang: string) {
+    releaseLanguageAssets(bundleName: string, lang: string) {
         lang = lang.toLowerCase();
-        this._languagePack.releaseLanguageAssets(lang);
+        this._languagePack.releaseLanguageAssets(bundleName, lang);
     }
 }
+
+export const languageManager = new LanguageManager();
