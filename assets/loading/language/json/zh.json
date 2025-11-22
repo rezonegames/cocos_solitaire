@@ -1,1 +1,1 @@
-{"ui_loading_enter_scene": "所有资源加载完成，进入主场景...", "ui_loading_check_version": "正在检查资源，并准备热梗...", "ui_loading_file": "文件", "ui_loading_dir": "目录", "ui_loading_loading_dir": "正在加载目录：${dir}......", "ui_loading_loading_done": "${dir} 加载完成"}
+{"ui_loading_enter_scene": "所有资源加载完成，进入主场景...", "ui_loading_check_version": "正在检查资源，并准备热梗...", "ui_loading_file": "文件", "ui_loading_dir": "目录", "ui_loading_loading_dir": "正在加载目录：%{dir}......", "ui_loading_loading_done": "%{dir} 加载完成"}

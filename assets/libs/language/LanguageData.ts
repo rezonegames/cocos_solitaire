@@ -1,4 +1,5 @@
 import { TTFFont } from "cc";
+import * as _ from 'lodash-es';
 
 /** 框架支持的语言数据类型 */
 export enum LanguageDataType {
@@ -21,7 +22,7 @@ export class LanguageData {
     /** 语言数据 */
     static language: Map<string, any> = new Map();
     /** TTF字体 */
-    static font: TTFFont = null!;
+    static font: Map<string, TTFFont> = new Map();
 
     /** 
      * 通过多语言关键字获取语言文本 
@@ -33,6 +34,26 @@ export class LanguageData {
             if (content) return content;
         }
         return labId;
+    }
+
+    static getFontById(fontId: string): TTFFont {
+        return this.font[fontId] || null;
+    }
+
+
+    static pack(dataId: string, params?: any, fontId?: string): string {
+        return JSON.stringify({ dataId, params, fontId: fontId ||  `default` });;
+    }
+
+    static unpack(value: string): any {
+        const {dataId, params, fontId} = JSON.parse(value);
+        return {
+            params: _.map(params, (v, k) => {
+                return {key: k,value: v}
+            }),
+            dataId,
+            fontId,
+        }
     }
 }
 

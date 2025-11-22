@@ -1,7 +1,7 @@
 import {director, error, JsonAsset, TTFFont} from "cc";
+import * as _ from "lodash-es";
 import {resLoader} from "../res/ResLoader";
 import {logger} from "../log/Logger";
-import {JsonUtil} from "../utils/JsonUtil";
 import {LanguageData, LanguageDataType, LanguageType} from "./LanguageData";
 
 export class LanguagePack {
@@ -53,15 +53,18 @@ export class LanguagePack {
                 if (err) {
                     reject(err);
                 }
-                LanguageData.language.set(LanguageDataType.Json, langJson);
+                LanguageData.language.set(LanguageDataType.Json, langJson.json);
                 logger.logConfig(path, "下载语言包 json 资源");
 
-                resLoader.load<TTFFont>(bundleName, path, (err: any, font: any) => {
+                const pathTTF = `${LanguageData.path_json}/${lang}-ttf`
+                resLoader.loadDir<TTFFont>(bundleName, pathTTF, (err: any, fontList: any[]) => {
                     if (err) {
                         reject(err);
                     }
-                    LanguageData.font = font;
-                    logger.logConfig(path, "下载语言包 ttf 资源");
+                    _.forEach(fontList, (font: any) => {
+                        LanguageData.font[font.name] = font;
+                    })
+                    logger.logConfig(pathTTF, "下载语言包 ttf 资源");
                     resolve();
                 })
             })
@@ -90,7 +93,6 @@ export class LanguagePack {
     releaseLanguageAssets(bundleName: string, lang: string) {
         const langTexture = `${LanguageData.path_texture}/${lang}`;
         resLoader.releaseDir(langTexture, bundleName);
-
         const langJson = `${LanguageData.path_json}/${lang}`;
         const json = resLoader.get(bundleName, langJson, JsonAsset);
         if (json) json.decRef();

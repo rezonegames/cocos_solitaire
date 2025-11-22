@@ -16,12 +16,13 @@ export class LangLabelParamsItem {
 @ccclass("LanguageLabel")
 @menu('OopsFramework/Language/LanguageLabel （文本多语言）')
 export class LanguageLabel extends Component {
+
+    // 参数
     @property({
         type: LangLabelParamsItem,
         displayName: "params"
     })
     private _params: Array<LangLabelParamsItem> = [];
-
     @property({
         type: LangLabelParamsItem,
         displayName: "params"
@@ -36,6 +37,21 @@ export class LanguageLabel extends Component {
         return this._params || [];
     }
 
+    // 字体
+    @property({ serializable: true })
+    private _fontId: string = "";
+    @property({ type: CCString, serializable: true })
+    get fontId(): string {
+        return this._fontId || "";
+    }
+    set fontId(value: string) {
+        this._fontId = value;
+        if (!EDITOR) {
+            this._needUpdate = true;
+        }
+    }
+
+    // 多语言ID
     @property({ serializable: true })
     private _dataID: string = "";
     @property({ type: CCString, serializable: true })
@@ -50,7 +66,7 @@ export class LanguageLabel extends Component {
     }
 
     get string(): string {
-        let _string = LanguageData.getLangByID(this._dataID);
+        let _string = LanguageData.getLangByID(this.dataID);
         if (_string && this._params.length > 0) {
             this._params.forEach((item: LangLabelParamsItem) => {
                 _string = _string.replace(`%{${item.key}}`, item.value)
@@ -58,9 +74,13 @@ export class LanguageLabel extends Component {
         }
         if (!_string) {
             warn("[LanguageLabel] 未找到语言标识，使用dataID替换");
-            _string = this._dataID;
+            _string = this.dataID;
         }
         return _string;
+    }
+
+    get font(): TTFFont {
+        return LanguageData.getFontById(this.fontId);
     }
 
     /** 更新语言 */
@@ -109,19 +129,14 @@ export class LanguageLabel extends Component {
     updateContent() {
         const label = this.getComponent(Label);
         const richtext = this.getComponent(RichText);
-        const font: TTFFont | null = LanguageData.font;
 
         if (label) {
-            if (font) {
-                label.font = font;
-            }
+            label.font = this.font;
             label.string = this.string;
             this.initFontSize = label.fontSize;
         }
         else if (richtext) {
-            if (font) {
-                richtext.font = font;
-            }
+            richtext.font = this.font;
             richtext.string = this.string;
             this.initFontSize = richtext.fontSize;
         }

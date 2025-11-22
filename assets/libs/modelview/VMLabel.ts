@@ -165,7 +165,7 @@ export default class VMLabel extends VMBase {
 
     }
 
-    setLabelValue(value) {
+    setLabelValue(value: any) {
         (this.getComponent(this.labelType) as Label)!.string = value + '';
     }
 

@@ -2,7 +2,7 @@ import { _decorator, Component, Node, tween, Vec3, EventTouch, Button } from 'cc
 const { ccclass, property, menu } = _decorator;
 
 @ccclass('ButtonScale')
-@menu('Custom/ButtonScale')
+@menu('Gui/ButtonScale')
 export class ButtonScale extends Component {
     @property({ tooltip: '按下时放大的比例' })
     pressScale: number = 1.1;

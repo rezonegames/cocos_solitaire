@@ -115,7 +115,8 @@ class Logger {
      * @param msg       日志消息
      */
     trace(msg: any, color: string = "#000000ff") {
-        this.print(LogType.Trace, msg, color);
+        // this.print(LogType.Trace, msg, color);
+        console.error(msg);
     }
 
     /**
