@@ -45,8 +45,18 @@ export class ButtonScale extends Component {
         // 防止连点（可选）
         const btn = this.getComponent(Button);
         if (btn) {
+
+            // 手动执行 Button 的 clickEvents
+            this._executeClickEvents(btn);
+
             btn.interactable = false;
             setTimeout(() => btn.interactable = true, this.disableButtonTime * 1000);
+        }
+    }
+
+    private _executeClickEvents(btn: Button) {
+        for (let handler of btn.clickEvents) {
+            handler.emit([btn]);
         }
     }
 

@@ -1,4 +1,5 @@
 import { CCString, Component, Label, RichText, TTFFont, _decorator, warn } from "cc";
+import * as _ from 'lodash-es';
 import { EDITOR } from "cc/env";
 import { LanguageData } from "./LanguageData";
 
@@ -14,10 +15,10 @@ export class LangLabelParamsItem {
 
 /** 文本多语言 */
 @ccclass("LanguageLabel")
-@menu('OopsFramework/Language/LanguageLabel （文本多语言）')
+@menu('Language/LanguageLabel （文本多语言）')
 export class LanguageLabel extends Component {
 
-    // 参数
+    // 参数原型里%{dir}，替换里面的dir
     @property({
         type: LangLabelParamsItem,
         displayName: "params"
@@ -63,6 +64,29 @@ export class LanguageLabel extends Component {
         if (!EDITOR) {
             this._needUpdate = true;
         }
+    }
+
+    // 打包参数
+    static pack(dataId: string, params?: any, fontId?: string): string {
+        return JSON.stringify({ dataId, params, fontId: fontId ||  `default` });;
+    }
+
+    static unpack(value: string): any {
+        const {dataId, params, fontId} = JSON.parse(value);
+        return {
+            params: _.map(params, (v, k) => {
+                return {key: k,value: v}
+            }),
+            dataId,
+            fontId,
+        }
+    }
+
+    set pack(value: string) {
+        const {dataId, params, fontId} = LanguageLabel.unpack(value);
+        this.params = params;
+        this.dataID = dataId;
+        this.fontId = fontId;
     }
 
     get string(): string {

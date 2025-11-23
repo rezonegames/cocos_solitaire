@@ -1,6 +1,5 @@
-import {_decorator, director, sys, Label, ProgressBar} from 'cc';
-import * as _ from 'lodash-es';
-import {storageManager}  from '../libs/storage/StorageManager';
+import {_decorator, director, sys} from 'cc';
+import {storageManager}  from 'db://assets/libs/storage/StorageManager';
 import {languageManager} from "db://assets/libs/language/Language";
 import {HotUpdate} from "db://assets/libs/hotupate/HotUpdate";
 import {HotUpdateWeb} from "db://assets/libs/hotupate/HotUpdateWeb";
@@ -13,20 +12,6 @@ const {ccclass, property} = _decorator;
 
 @ccclass('Loading')
 export class Loading extends VMParent {
-
-    @property(Label)
-    info: Label = null!;
-
-    @property(ProgressBar)
-    fileProgress: ProgressBar = null!;
-
-    @property(Label)
-    fileLabel: Label = null!;
-    @property(ProgressBar)
-    byteProgress: ProgressBar = null!;
-
-    @property(Label)
-    byteLabel: Label = null!;
 
     protected data = {
         info: '',
@@ -44,7 +29,8 @@ export class Loading extends VMParent {
 
     onLoad() {
         super.onLoad();
-
+        // todo：使用英文
+        storageManager.set('language', 'zh');
         const language = storageManager.get('language', 'en');
         logger.logConfig(`storage language:${language}`);
         languageManager.setLanguage('loading', language).then((_) => {

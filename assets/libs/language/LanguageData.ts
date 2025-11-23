@@ -39,22 +39,6 @@ export class LanguageData {
     static getFontById(fontId: string): TTFFont {
         return this.font[fontId] || null;
     }
-
-
-    static pack(dataId: string, params?: any, fontId?: string): string {
-        return JSON.stringify({ dataId, params, fontId: fontId ||  `default` });;
-    }
-
-    static unpack(value: string): any {
-        const {dataId, params, fontId} = JSON.parse(value);
-        return {
-            params: _.map(params, (v, k) => {
-                return {key: k,value: v}
-            }),
-            dataId,
-            fontId,
-        }
-    }
 }
 
 export const LanguageType = [

@@ -1,5 +1,10 @@
 import {uiManager} from "db://assets/libs/ui/UIManager";
 import {VM} from "../../libs/modelview/ViewModel";
+import {storageManager} from "db://assets/libs/storage/StorageManager";
+import {logger} from "db://assets/libs/log/Logger";
+import {languageManager} from "db://assets/libs/language/Language";
+import {HotUpdate} from "db://assets/libs/hotupate/HotUpdate";
+import {HotUpdateWeb} from "db://assets/libs/hotupate/HotUpdateWeb";
 
 // UI类型
 export enum UIID {
@@ -26,7 +31,11 @@ export let bundleName = "game1"
 
 export class GameInstance {
 
-    static init() {
+    static async init() {
+
+        const language = storageManager.get('language', 'en');
+        logger.logConfig(`game1 storage language:${language}`);
+        await languageManager.setLanguage('game1', language);
 
         const bundle = bundleName;
         uiManager.initUIConf({

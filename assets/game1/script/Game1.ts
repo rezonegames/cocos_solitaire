@@ -5,8 +5,8 @@ const { ccclass, property } = _decorator;
 @ccclass('Game1')
 export class Game1 extends Component {
 
-    start() {
-        GameInstance.init();
+    async start() {
+        await GameInstance.init();
     }
 
     update(deltaTime: number) {

@@ -1,6 +1,6 @@
 import {_decorator, Component} from 'cc';
 import {resLoader} from "../res/ResLoader";
-import {LanguageData} from "../language/LanguageData";
+import {LanguageLabel} from "../language/LanguageLabel";
 
 const {ccclass, property} = _decorator;
 
@@ -36,7 +36,7 @@ export class HotUpdateWeb extends Component {
      * 检查更新
      */
     checkUpdate() {
-        this.loading.onInfo(LanguageData.pack(`ui_loading_check_version`));
+        this.loading.onInfo(LanguageLabel.pack(`ui_loading_check_version`));
         this.doUpdate();
     }
 
@@ -47,18 +47,18 @@ export class HotUpdateWeb extends Component {
         if (!this._taskList.length) {
             setTimeout(()=>{
                 const bundleName = this.loading.getBundleName();
-                this.loading.onInfo(LanguageData.pack(`ui_loading_enter_scene`));
+                this.loading.onInfo(LanguageLabel.pack(`ui_loading_enter_scene`));
                 this.loading.enterGame(bundleName, );
-            }, 3000)
+            }, 300)
             return;
         }
         const dir = this._taskList.shift()!;
         const bundleName = this.loading.getBundleName();
 
-        this.loading.setLabel1(LanguageData.pack('ui_loading_file'));
-        this.loading.setLabel2(LanguageData.pack('ui_loading_dir'));
+        this.loading.setLabel1(LanguageLabel.pack('ui_loading_file'));
+        this.loading.setLabel2(LanguageLabel.pack('ui_loading_dir'));
 
-        this.loading.onInfo(LanguageData.pack(`ui_loading_loading_dir`, {dir}));
+        this.loading.onInfo(LanguageLabel.pack(`ui_loading_loading_dir`, {dir}));
 
         const self = this;
 
@@ -66,9 +66,9 @@ export class HotUpdateWeb extends Component {
             this.loading.setByteProgress(finished, total);
         };
         const onFinish = () => {
-            this.loading.onInfo(LanguageData.pack(`ui_loading_loading_done`, {dir}));
+            this.loading.onInfo(LanguageLabel.pack(`ui_loading_loading_done`, {dir}));
             this.loading.setFileProgress(self._total - self._taskList.length, self._total);
-            setTimeout(self.loadNextDir.bind(this), 2000);
+            setTimeout(self.loadNextDir.bind(this), 200);
         };
 
         resLoader.loadDir(bundleName, dir, onProgress.bind(this), onFinish.bind(this));
