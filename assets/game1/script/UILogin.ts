@@ -22,7 +22,6 @@ export class UILogin extends UIView {
     }
 
     onGuestLogin() {
-        logger.logView(`xxxxxxxxxx`);
         uiManager.open(UIID.UIPlay);
     }
 

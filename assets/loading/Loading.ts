@@ -6,6 +6,7 @@ import {HotUpdateWeb} from "db://assets/libs/hotupate/HotUpdateWeb";
 import VMParent from "db://assets/libs/modelview/VMParent";
 import {resLoader} from "db://assets/libs/res/ResLoader";
 import {logger} from "db://assets/libs/log/Logger";
+import {LanguageLabel} from "db://assets/libs/language/LanguageLabel";
 
 
 const {ccclass, property} = _decorator;
@@ -30,9 +31,10 @@ export class Loading extends VMParent {
     onLoad() {
         super.onLoad();
         // todo：使用英文
-        storageManager.set('language', 'zh');
+        storageManager.set('language', 'en');
+        LanguageLabel.defaultFontId = `alk-life-webfont`;
+        //
         const language = storageManager.get('language', 'en');
-        logger.logConfig(`storage language:${language}`);
         languageManager.setLanguage('loading', language).then((_) => {
             // 开始热梗
             if (sys.isNative) {
@@ -70,13 +72,13 @@ export class Loading extends VMParent {
     setFileProgress(min: number, max: number): void {
         this.data.minFile = min;
         this.data.maxFile = max;
-        this.data.fileLabel = this.data.minFile + ' / ' + this.data.maxFile;
+        this.data.fileLabel = LanguageLabel.pack({dataId: `${min}/${max}`});
     }
 
     setByteProgress(min: number, max: number): void {
         this.data.minBytes = min;
         this.data.maxBytes = max;
-        this.data.byteLabel = this.data.minBytes + ' / ' + this.data.maxBytes;
+        this.data.byteLabel = LanguageLabel.pack({dataId: `${min}/${max}`});
     }
 
     /**

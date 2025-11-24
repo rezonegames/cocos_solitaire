@@ -36,7 +36,7 @@ export class HotUpdateWeb extends Component {
      * 检查更新
      */
     checkUpdate() {
-        this.loading.onInfo(LanguageLabel.pack(`ui_loading_check_version`));
+        this.loading.onInfo(LanguageLabel.pack({dataId: `ui_loading_check_version`}));
         this.doUpdate();
     }
 
@@ -47,7 +47,7 @@ export class HotUpdateWeb extends Component {
         if (!this._taskList.length) {
             setTimeout(()=>{
                 const bundleName = this.loading.getBundleName();
-                this.loading.onInfo(LanguageLabel.pack(`ui_loading_enter_scene`));
+                this.loading.onInfo(LanguageLabel.pack({dataId: `ui_loading_enter_scene`}));
                 this.loading.enterGame(bundleName, );
             }, 300)
             return;
@@ -55,10 +55,10 @@ export class HotUpdateWeb extends Component {
         const dir = this._taskList.shift()!;
         const bundleName = this.loading.getBundleName();
 
-        this.loading.setLabel1(LanguageLabel.pack('ui_loading_file'));
-        this.loading.setLabel2(LanguageLabel.pack('ui_loading_dir'));
+        this.loading.setLabel1(LanguageLabel.pack({dataId: `ui_loading_file`}));
+        this.loading.setLabel2(LanguageLabel.pack({dataId: `ui_loading_dir`}));
 
-        this.loading.onInfo(LanguageLabel.pack(`ui_loading_loading_dir`, {dir}));
+        this.loading.onInfo(LanguageLabel.pack({dataId: `ui_loading_loading_dir`, params: {dir}}));
 
         const self = this;
 
@@ -66,7 +66,7 @@ export class HotUpdateWeb extends Component {
             this.loading.setByteProgress(finished, total);
         };
         const onFinish = () => {
-            this.loading.onInfo(LanguageLabel.pack(`ui_loading_loading_done`, {dir}));
+            this.loading.onInfo(LanguageLabel.pack({dataId: `ui_loading_loading_done`, params: {dir}}));
             this.loading.setFileProgress(self._total - self._taskList.length, self._total);
             setTimeout(self.loadNextDir.bind(this), 200);
         };

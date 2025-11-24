@@ -1,9 +1,10 @@
-import { CCString, Component, Label, RichText, TTFFont, _decorator, warn } from "cc";
+import {CCString, Component, Label, RichText, TTFFont, _decorator, warn} from "cc";
 import * as _ from 'lodash-es';
-import { EDITOR } from "cc/env";
-import { LanguageData } from "./LanguageData";
+import {EDITOR} from "cc/env";
+import {LanguageData} from "./LanguageData";
+import {logger} from "db://assets/libs/log/Logger";
 
-const { ccclass, property, menu } = _decorator;
+const {ccclass, property, menu} = _decorator;
 
 @ccclass("LangLabelParamsItem")
 export class LangLabelParamsItem {
@@ -17,6 +18,9 @@ export class LangLabelParamsItem {
 @ccclass("LanguageLabel")
 @menu('Language/LanguageLabel （文本多语言）')
 export class LanguageLabel extends Component {
+
+    // 默认的字体
+    static defaultFontId: string = "default";
 
     // 参数原型里%{dir}，替换里面的dir
     @property({
@@ -34,17 +38,19 @@ export class LanguageLabel extends Component {
             this._needUpdate = true;
         }
     }
+
     get params(): Array<LangLabelParamsItem> {
         return this._params || [];
     }
 
     // 字体
-    @property({ serializable: true })
+    @property({serializable: true})
     private _fontId: string = "";
-    @property({ type: CCString, serializable: true })
+    @property({type: CCString, serializable: true})
     get fontId(): string {
         return this._fontId || "";
     }
+
     set fontId(value: string) {
         this._fontId = value;
         if (!EDITOR) {
@@ -53,12 +59,13 @@ export class LanguageLabel extends Component {
     }
 
     // 多语言ID
-    @property({ serializable: true })
+    @property({serializable: true})
     private _dataID: string = "";
-    @property({ type: CCString, serializable: true })
+    @property({type: CCString, serializable: true})
     get dataID(): string {
         return this._dataID || "";
     }
+
     set dataID(value: string) {
         this._dataID = value;
         if (!EDITOR) {
@@ -67,18 +74,24 @@ export class LanguageLabel extends Component {
     }
 
     // 打包参数
-    static pack(dataId: string, params?: any, fontId?: string): string {
-        return JSON.stringify({ dataId, params, fontId: fontId ||  `default` });;
+    static pack<T extends { dataId: string; params?: any; fontId?: string }>(value: T): string {
+        const {dataId, params, fontId} = value;
+        return JSON.stringify({dataId, params, fontId: fontId});
     }
 
     static unpack(value: string): any {
-        const {dataId, params, fontId} = JSON.parse(value);
-        return {
-            params: _.map(params, (v, k) => {
-                return {key: k,value: v}
-            }),
-            dataId,
-            fontId,
+        try {
+            const {dataId, params, fontId} = JSON.parse(value);
+            return {
+                params: _.map(params, (v, k) => {
+                    return {key: k, value: v}
+                }),
+                dataId,
+                fontId,
+            }
+        }catch(err) {
+            logger.trace(value);
+            return {dataId: value, }
         }
     }
 
@@ -104,7 +117,7 @@ export class LanguageLabel extends Component {
     }
 
     get font(): TTFFont {
-        return LanguageData.getFontById(this.fontId);
+        return LanguageData.getFontById(this.fontId || LanguageLabel.defaultFontId);
     }
 
     /** 更新语言 */
@@ -141,6 +154,7 @@ export class LanguageLabel extends Component {
         }
         this._needUpdate = true;
     }
+
     private _needUpdate: boolean = false;
 
     update() {
@@ -158,13 +172,11 @@ export class LanguageLabel extends Component {
             label.font = this.font;
             label.string = this.string;
             this.initFontSize = label.fontSize;
-        }
-        else if (richtext) {
+        } else if (richtext) {
             richtext.font = this.font;
             richtext.string = this.string;
             this.initFontSize = richtext.fontSize;
-        }
-        else {
+        } else {
             warn("[LanguageLabel], 该节点没有cc.Label || cc.RichText组件");
         }
     }
