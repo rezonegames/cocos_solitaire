@@ -13,4 +13,3 @@ export class Game1 extends Component {
         
     }
 }
-
