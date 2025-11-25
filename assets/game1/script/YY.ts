@@ -48,8 +48,7 @@ export class Player {
 
     setItems(items: any) {
         _.forEach(items, (v, k) => {
-            // logger.trace(`v: ${v} key: ${k}`);
-            this.items[k] = LanguageLabel.pack({dataId: v});
+            this.items[k] = v;
         })
     }
 }

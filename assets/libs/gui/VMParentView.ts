@@ -1,21 +1,14 @@
-import {_decorator, Component, Node} from 'cc';
-import {VM} from './ViewModel';
+import {_decorator, Component} from 'cc';
+import {UIView} from "../ui/UIView";
+import {VM} from "../modelview/ViewModel"
 
-const {ccclass, property, help, executionOrder} = _decorator;
+const {ccclass, property, menu, executionOrder, help} = _decorator;
 
 
-/**
- * 提供VM环境，控制旗下所有VM节点
- * 一般用于 非全局的 VM绑定,VM 环境与 组件紧密相连
- * （Prefab 模式绑定）
- * VMParent 必须必其他组件优先执行
- * v0.1 修复bug ，现在可以支持 Parent 嵌套 （但是注意性能问题，不要频繁嵌套）
- */
 @ccclass
 @executionOrder(-1)
-@help('https://github.com/wsssheep/cocos_creator_mvvm_tools/blob/master/docs/VMParent.md')
-export default class VMParent extends Component {
-
+@menu('Gui/VMParentView')
+export default class VMParentView extends UIView {
     /**绑定的标签，可以通过这个tag 获取 当前的 vm 实例 */
     protected tag: string = '_temp';
 
@@ -84,7 +77,6 @@ export default class VMParent extends Component {
         }
     }
 
-    /**未优化的遍历节点，获取VM 组件 */
     private getVMComponents() {
         let comps = this.node.getComponentsInChildren('VMBase');
         let parents = this.node.getComponentsInChildren('VMParent').filter(v => v.uuid !== this.uuid); //过滤掉自己
@@ -99,22 +91,12 @@ export default class VMParent extends Component {
         return comps;
     }
 
-
-    /**
-     * [注意]不能覆盖此方法，如果需要覆盖。
-     * 需要在该方法内部调用父类的实现，再定义自己的方法
-     ```ts
-     onDestroy(){
-     super.onDestroy();
-     }
-     ```
-     */
     protected onDestroy() {
+        super.onDestroy();
+
         this.onUnBind();
         //解除全部引用
         VM.remove(this.tag);
         this.data = null;
     }
-
-    // update (dt) {}
 }

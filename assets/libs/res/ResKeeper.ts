@@ -42,7 +42,7 @@ export class ResKeeper extends Component {
     /**
      * 组件销毁时自动释放所有keep的资源
      */
-    public onDestroy() {
+    protected onDestroy() {
         this.releaseAssets();
     }
 

@@ -2,13 +2,11 @@ import {_decorator,} from 'cc';
 import {EDITOR} from 'cc/env'
 import VMLabel from "../modelview/VMLabel";
 import {LanguageLabel, } from "../language/LanguageLabel";
-import {logger} from "../log/Logger";
 
 const {ccclass, property, menu, executeInEditMode, help} = _decorator;
 
 
 @ccclass
-@executeInEditMode
 @menu('Gui/VMLanguageLabel')
 export default class VMLanguageLabel extends VMLabel {
 
@@ -22,7 +20,12 @@ export default class VMLanguageLabel extends VMLabel {
     }
 
     setLabelValue(value: any): void {
-        if (!value) return;
-        this.languageLabel.pack = value;
+        if(typeof value === 'number') {
+            value = value.toString();
+        }
+        const {dataId, params, fontId} = LanguageLabel.unpack(value);
+        this.languageLabel.params = params || [];
+        this.languageLabel.dataID = dataId || value;
+        this.languageLabel.fontId = fontId;
     }
 }

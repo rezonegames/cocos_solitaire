@@ -2,7 +2,7 @@ import {CCString, Component, Label, RichText, TTFFont, _decorator, warn} from "c
 import * as _ from 'lodash-es';
 import {EDITOR} from "cc/env";
 import {LanguageData} from "./LanguageData";
-import {logger} from "db://assets/libs/log/Logger";
+import {logger} from "../log/Logger";
 
 const {ccclass, property, menu} = _decorator;
 
@@ -75,7 +75,7 @@ export class LanguageLabel extends Component {
 
     // 打包参数
     static pack<T extends { dataId: string; params?: any; fontId?: string }>(value: T): string {
-        const {dataId, params, fontId} = value;
+        let {dataId, params, fontId} = value;
         return JSON.stringify({dataId, params, fontId: fontId});
     }
 
@@ -90,16 +90,9 @@ export class LanguageLabel extends Component {
                 fontId,
             }
         }catch(err) {
-            logger.trace(value);
+            // logger.trace(value);
             return {dataId: value, }
         }
-    }
-
-    set pack(value: string) {
-        const {dataId, params, fontId} = LanguageLabel.unpack(value);
-        this.params = params;
-        this.dataID = dataId;
-        this.fontId = fontId;
     }
 
     get string(): string {
