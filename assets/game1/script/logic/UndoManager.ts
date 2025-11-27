@@ -1,6 +1,5 @@
 import {Vec3, Node} from 'cc';
-import {Pile} from "db://assets/game1/script/Pile";
-import {Card} from "db://assets/game1/script/Card";
+import {Pile} from "./Pile";
 
 export interface UndoMove {
     cards: Node[]; // 移动的所有牌（单张或多张）
@@ -23,5 +22,14 @@ export class UndoManager {
 
     pop() {
         return this.stack.pop();
+    }
+    // 新增：清空 Undo 栈
+    clear() {
+        this.stack.length = 0;
+    }
+
+    // 可选：查看当前栈大小
+    size() {
+        return this.stack.length;
     }
 }

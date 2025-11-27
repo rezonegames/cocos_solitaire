@@ -1,45 +1,53 @@
 import {_decorator, Component, Node, Sprite, SpriteFrame, tween, Vec3} from 'cc';
-import {resLoader} from "db://assets/libs/res/ResLoader";
+import _ from 'lodash-es';
 import {bundleName} from "db://assets/game1/script/YY";
+import {ResUtil} from "db://assets/libs/res/ResUtil";
 
 const {ccclass, property} = _decorator;
 
+export const suits = ['hx', 'fk', 'ht', 'mh']
+
 @ccclass('Card')
 export class Card extends Component {
+    @property(Node) flipNode: Node = null!;
     @property(Node) front: Node = null!;
     @property(Node) back: Node = null!;
     @property(Sprite) suitSprite: Sprite = null!;
+    @property(Sprite) suitBackSprite: Sprite = null!;
     @property(Sprite) rankSprite: Sprite = null!;
 
-    suit: 'spade' | 'heart' | 'club' | 'diamond';
-    rank: number; // 1~13
+    suit: string;
+    rank: number;
     isFaceUp = false;
 
     init(suit: string, rank: number) {
         this.suit = suit as any;
         this.rank = rank;
-        this.loadSprites().then();
+        this.node.setScale(0.66, 0.66, 1);   // 整体缩放 Card 大小
+        this.loadSprites();
     }
 
     async loadSprites() {
-        // suit 图
-        const suitPath = `textures/play_ui/${this.suit}`;
+        // 资源路径
+        const path = 'texture/card'
+
+        const suitPath = `${path}/${this.suit}_small/spriteFrame`;
         this.suitSprite.spriteFrame = await this.loadSF(suitPath);
 
-        // rank 图 (1->A, 11->J,12->Q,13->K)
-        const rankStr = this.rankToKey(this.rank);
-        const rankPath = `textures/ranks/${rankStr}/spriteFrame`;
+        const suitBackPath = `${path}/${this.suit}/spriteFrame`;
+        this.suitBackSprite.spriteFrame = await this.loadSF(suitBackPath);
+
+        const rankPath = `${path}/${this.rank}_${_.includes(['hx', 'fk'], this.suit)?'red':'bla'}/spriteFrame`;
         this.rankSprite.spriteFrame = await this.loadSF(rankPath);
     }
 
     loadSF(path: string): Promise<SpriteFrame> {
         return new Promise((resolve, reject) => {
-            resLoader.load(bundleName, path, SpriteFrame, (err, spriteFrame) => {
-                if (err) return reject(err);
-                resolve(spriteFrame);
-            })
-        })
-
+            ResUtil.load(this.node, bundleName, path, SpriteFrame, (err, sf) => {
+                if (err) reject(err);
+                else resolve(sf);
+            });
+        });
     }
 
     rankToKey(r: number) {
@@ -49,12 +57,10 @@ export class Card extends Component {
                     r === 13 ? "K" : r.toString();
     }
 
-    /** 翻牌动画 */
     flipFaceUp() {
         if (this.isFaceUp) return;
         this.isFaceUp = true;
-
-        tween(this.node)
+        tween(this.flipNode)
             .to(0.1, {scale: new Vec3(0, 1, 1)})
             .call(() => {
                 this.front.active = true;
@@ -67,8 +73,7 @@ export class Card extends Component {
     flipFaceDown() {
         if (!this.isFaceUp) return;
         this.isFaceUp = false;
-
-        tween(this.node)
+        tween(this.flipNode)
             .to(0.1, {scale: new Vec3(0, 1, 1)})
             .call(() => {
                 this.front.active = false;
@@ -78,7 +83,6 @@ export class Card extends Component {
             .start();
     }
 
-    /** 红黑色 */
     getColor() {
         return (this.suit === "heart" || this.suit === "diamond") ? "red" : "black";
     }
