@@ -27,6 +27,10 @@ export class Card extends Component {
         this.loadSprites();
     }
 
+    getColor(): string {
+        return _.includes(['hx', 'fk'], this.suit)?'red':'bla'
+    }
+
     async loadSprites() {
         // 资源路径
         const path = 'texture/card'
@@ -37,7 +41,7 @@ export class Card extends Component {
         const suitBackPath = `${path}/${this.suit}/spriteFrame`;
         this.suitBackSprite.spriteFrame = await this.loadSF(suitBackPath);
 
-        const rankPath = `${path}/${this.rank}_${_.includes(['hx', 'fk'], this.suit)?'red':'bla'}/spriteFrame`;
+        const rankPath = `${path}/${this.rank}_${this.getColor()}/spriteFrame`;
         this.rankSprite.spriteFrame = await this.loadSF(rankPath);
     }
 
@@ -81,9 +85,5 @@ export class Card extends Component {
             })
             .to(0.1, {scale: new Vec3(1, 1, 1)})
             .start();
-    }
-
-    getColor() {
-        return (this.suit === "heart" || this.suit === "diamond") ? "red" : "black";
     }
 }

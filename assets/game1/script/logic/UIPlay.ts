@@ -1,3 +1,4 @@
+// UIPlay.ts
 import { _decorator, tween, Vec3, Node, Prefab, director, Canvas, UITransform } from 'cc';
 import _ from 'lodash-es';
 import VMParentView from "db://assets/libs/gui/VMParentView";
@@ -18,7 +19,7 @@ export class UIPlay extends VMParentView {
         moves: 0,
     }
 
-    @property(Node) stockButton: Node;
+    @property(Node) stockButton: Node = null!;
     @property(Prefab) cardPrefab: Prefab = null!;
     @property([Node]) tableauRoots: Node[] = [];
     @property(Node) stockRoot: Node = null!;
@@ -28,13 +29,12 @@ export class UIPlay extends VMParentView {
     @property
     tableauOffset = 35;
 
-    // 可调：当列过高时压缩最大显示高度（像素）
     @property
     maxTableauVisibleHeight = 600;
 
     tableau: Pile[] = [];
-    stock: Pile;
-    waste: Pile;
+    stock: Pile = null!;
+    waste: Pile = null!;
     foundation: Pile[] = [];
 
     factory: CardFactory = null!;
@@ -65,18 +65,19 @@ export class UIPlay extends VMParentView {
     initGame() {
         // 初始化 piles 并标注类型
         this.tableau = this.tableauRoots.map(n => {
-            const p = n.addComponent(Pile);
+            const p = n.getComponent(Pile) ?? n.addComponent(Pile);
             (p as any).isTableau = true;
             return p;
         });
-        this.stock = this.stockRoot.addComponent(Pile);
+
+        this.stock = this.stockRoot.getComponent(Pile) ?? this.stockRoot.addComponent(Pile);
         (this.stock as any).isStock = true;
 
-        this.waste = this.wasteRoot.addComponent(Pile);
+        this.waste = this.wasteRoot.getComponent(Pile) ?? this.wasteRoot.addComponent(Pile);
         (this.waste as any).isWaste = true;
 
         this.foundation = this.foundationRoots.map(n => {
-            const p = n.addComponent(Pile);
+            const p = n.getComponent(Pile) ?? n.addComponent(Pile);
             (p as any).isFoundation = true;
             return p;
         });
@@ -127,7 +128,7 @@ export class UIPlay extends VMParentView {
         this.initGame();
     }
 
-    /** 获取从指定牌开始的牌堆 */
+    /** 获取从指定牌开始的牌堆（返回一组 Node） */
     getStackFrom(cardNode: Node): Node[] {
         const parent = cardNode.parent!;
         const children = parent.children;
@@ -135,22 +136,22 @@ export class UIPlay extends VMParentView {
         return children.slice(idx);
     }
 
-    /** 判断能否放到 tableau */
-    canPlaceToTableau(card: Card, pile: Pile) {
+    /** 判断能否放到 tableau（card 为 Card 组件实例） */
+    canPlaceToTableau(cardComp: Card, pile: Pile) {
         const last = pile.getTopCard();
-        if (!last) return card.rank === 13;
+        if (!last) return cardComp.rank === 13;
         const lastCard = last.getComponent(Card)!;
-        return lastCard.getColor() !== card.getColor()
-            && lastCard.rank === card.rank + 1;
+        const movingColor = cardComp.getColor();
+        const lastColor = lastCard.getColor();
+        return lastColor !== movingColor && lastCard.rank === cardComp.rank + 1;
     }
 
     /** 判断能否放到 foundation */
-    canPlaceToFoundation(card: Card, pile: Pile) {
+    canPlaceToFoundation(cardComp: Card, pile: Pile) {
         const last = pile.getTopCard();
-        if (!last) return card.rank === 1;
+        if (!last) return cardComp.rank === 1;
         const lastCard = last.getComponent(Card)!;
-        return lastCard.suit === card.suit
-            && lastCard.rank + 1 === card.rank;
+        return lastCard.suit === cardComp.suit && lastCard.rank + 1 === cardComp.rank;
     }
 
     /** 点击 stock：把牌放到 waste 并修正位置 */
@@ -160,12 +161,12 @@ export class UIPlay extends VMParentView {
             this.recycleWasteToStock();
             return;
         }
-        const card = last.getComponent(Card)!;
-        card.flipFaceUp();
+        const cardComp = last.getComponent(Card)!;
+        cardComp.flipFaceUp();
 
         // 把牌放 waste，并设置局部位置（避免位置错位）
         last.setParent(this.waste.node);
-        last.setPosition(0, 0); // 放在 waste 区域的正确位置
+        last.setPosition(0, 0);
     }
 
     recycleWasteToStock() {
@@ -176,10 +177,11 @@ export class UIPlay extends VMParentView {
         }
     }
 
+    /** 当双击或快速点击时尝试自动放到 foundation */
     tryAutoToFoundation(cardNode: Node) {
-        const card = cardNode.getComponent(Card)!;
+        const cardComp = cardNode.getComponent(Card)!;
         for (const fd of this.foundation) {
-            if (this.canPlaceToFoundation(card, fd)) {
+            if (this.canPlaceToFoundation(cardComp, fd)) {
                 this.moveStack(cardNode, [cardNode], fd);
                 this.addScore(10);
                 return;
@@ -187,64 +189,62 @@ export class UIPlay extends VMParentView {
         }
     }
 
-    /** 近似判定：基于 world bounding box 的扩大判定 */
-    isNearNode(pileNode: Node, dropWorldPos: Vec3, radius = 80): boolean {
-        if (!pileNode) return false;
+    isNearNode(pileNode: Node, dropNode: Node): boolean {
+        if (!pileNode || !dropNode) return false;
 
-        // 判断是否靠近 pile 顶部（不是整个 pile）
-        const pileTopWorldPos = pileNode.getWorldPosition();
+        const pileUI = pileNode.getComponent(UITransform);
+        const dropUI = dropNode.getComponent(UITransform);
+        if (!pileUI || !dropUI) return false;
 
-        const dx = dropWorldPos.x - pileTopWorldPos.x;
-        const dy = dropWorldPos.y - pileTopWorldPos.y;
+        // 世界矩形
+        const pileRect = pileUI.getBoundingBoxToWorld();
+        const dropRect = dropUI.getBoundingBoxToWorld();
 
-        // 半径命中
-        return (dx * dx + dy * dy) <= (radius * radius);
+        // 判断是否相交
+        return pileRect.intersects(dropRect);
     }
 
-    /** handleDrop：第三个参数 originalParentNode 为拖拽开始时记录的父节点；dropWorldPos 为触摸结束的世界坐标 */
+    /** handleDrop：originalParentNode 为拖拽开始时记录的父节点；dropWorldPos 为触摸结束的世界坐标 */
     handleDrop(cardNode: Node, stack: Node[], originalParentNode?: Node, dropWorldPos?: Vec3) {
-        const card = cardNode.getComponent(Card)!;
+        const cardComp = cardNode.getComponent(Card)!;
         const worldPoint = dropWorldPos ? dropWorldPos.clone() : stack[0].getWorldPosition().clone();
 
         // Foundation 优先
         for (const fd of this.foundation) {
-            if (this.isNearNode(fd.node, worldPoint) && this.canPlaceToFoundation(card, fd)) {
+            if (this.isNearNode(fd.node, stack[0]) && this.canPlaceToFoundation(cardComp, fd)) {
                 this.moveStack(cardNode, stack, fd, originalParentNode);
                 this.addScore(10);
                 return;
             }
         }
 
-        // Tableau
+        // Tableau 判定
         for (const pile of this.tableau) {
-            if (this.isNearNode(pile.node, worldPoint)) {
-                if (this.canPlaceToTableau(card, pile)) {
+            if (this.isNearNode(pile.node, stack[0])) {
+                if (this.canPlaceToTableau(cardComp, pile)) {
                     this.moveStack(cardNode, stack, pile, originalParentNode);
                     return;
                 } else {
-                    // 命中但规则不允许，直接回原位
+                    // 命中但不允许放置，回原位
                     this.resetStack(stack, originalParentNode ?? stack[0].parent!);
                     return;
                 }
             }
         }
 
-        // 回原处（使用拖拽开始保存的 originalParentNode）
+        // 未命中 → 回原位
         this.resetStack(stack, originalParentNode ?? stack[0].parent!);
     }
 
-    /** 回原处：目标为原父的“倒数第一”位置 */
+    /** 回原处：目标为原父的“末尾”位置（tableau 使用 offset，其他为 0） */
     resetStack(stack: Node[], originalParentNode: Node) {
         if (!originalParentNode) return;
 
         const parentPile = originalParentNode.getComponent(Pile);
         const isTableau = parentPile?.isTableau ?? false;
 
-        // 放回时应该 append 到当前 children.length（拖走的卡片已不在原父里）
-        const baseIndex = originalParentNode.children.length;
-        let baseLocalY = 0;
-        if (isTableau) baseLocalY = - baseIndex * this.tableauOffset;
-        else baseLocalY = 0; // foundation / waste / stock 都为 0
+        const baseIndex = originalParentNode.children.length; // append position
+        const baseLocalY = isTableau ? - baseIndex * this.tableauOffset : 0;
 
         const parentWorld = originalParentNode.getWorldPosition().clone();
         const baseWorld = parentWorld.clone().add(new Vec3(0, baseLocalY, 0));
@@ -264,9 +264,7 @@ export class UIPlay extends VMParentView {
 
     /**
      * 移动 stack 到目标 pile（带动画）
-     * key fixes:
-     * - 最后一张 tween 完成后再翻开原堆的顶牌
-     * - tableau 的 offset 进行自适应压缩（避免超长）
+     * - 在最后一张 tween 回调中执行 tryFlipLastCard(oldPileNode)
      * - move 时 reparent 并恢复 worldPosition 以避免闪跳
      */
     moveStack(cardNode: Node, stack: Node[], targetPile: Pile, originalParentNode?: Node) {
@@ -278,27 +276,20 @@ export class UIPlay extends VMParentView {
         const isWaste = targetPile.isWaste;
         const isStock = targetPile.isStock;
 
-        // 目标 pile 当前已有卡数（在动画开始前）
         const existing = targetPile.node.children.length;
-
-        // 计算实际 offset（tableau 可能需要压缩）
         const offset = isTableau ? this.computeTableauOffsetForPile(existing + stack.length) : 0;
-
-        // 记录旧局部位置（用于 Undo）
-        const oldPositions = stack.map(n => n.position.clone());
-
-        // 目标基点 world（基于目标 pile 的 world 中心）
         const baseLocalY = isTableau ? - existing * offset : 0;
         const targetBaseWorld = targetPile.node.getWorldPosition().clone().add(new Vec3(0, baseLocalY, 0));
 
-        // 对 stack 中每张牌做动画：先 tween worldPosition -> 完成后 reparent 并设置 local pos
+        const oldPositions = stack.map(n => n.position.clone());
+        const total = stack.length;
+
         stack.forEach((node, i) => {
             const worldTarget = targetBaseWorld.clone().add(new Vec3(0, isTableau ? - i * offset : 0, 0));
 
             tween(node)
                 .to(0.12, { worldPosition: worldTarget })
                 .call(() => {
-                    // 完成后 parent 回目标 pile 并设置局部坐标
                     node.parent = targetPile.node;
 
                     if (isFoundation || isWaste || isStock) {
@@ -311,19 +302,15 @@ export class UIPlay extends VMParentView {
 
                     this.addMoves(1);
 
-                    // 如果这是 stack 中最后一张完成回调，则现在原堆已经被移走，可以安全翻牌
-                    if (i === stack.length - 1) {
+                    // 最后一张完成时翻原堆的最后一张
+                    if (i === total - 1) {
                         this.tryFlipLastCard(oldPileNode);
                     }
                 })
                 .start();
         });
 
-        // new positions for undo
-        const newPositions = stack.map((_, i) => {
-            if (isTableau) return new Vec3(0, baseLocalY - i * offset);
-            return new Vec3(0, 0);
-        });
+        const newPositions = stack.map((_, i) => isTableau ? new Vec3(0, baseLocalY - i * offset) : new Vec3(0, 0));
 
         this.undoManager.pushMove({
             cards: [...stack],
@@ -331,7 +318,7 @@ export class UIPlay extends VMParentView {
             to: targetPile,
             oldPositions,
             newPositions,
-        });
+        } as any);
     }
 
     /**
@@ -343,19 +330,17 @@ export class UIPlay extends VMParentView {
         const needed = totalCardsInPile * defaultOffset;
         if (needed <= maxVisibleHeight) return defaultOffset;
 
-        // 压缩：但保留最小间距（避免完全重叠）
         const compressed = Math.max(8, Math.floor(maxVisibleHeight / Math.max(1, totalCardsInPile)));
         return compressed;
     }
 
     /**
-     * 将 cardNode 或单张牌自动移动到匹配的 foundation（用于双击或自动操作）
-     * 返回是否成功移动
+     * moveToFoundation：将单张牌移动到可放的 foundation（用于自动/双击）
      */
     moveToFoundation(cardNode: Node, originalParentNode?: Node): boolean {
-        const card = cardNode.getComponent(Card)!;
+        const cardComp = cardNode.getComponent(Card)!;
         for (const fd of this.foundation) {
-            if (this.canPlaceToFoundation(card, fd)) {
+            if (this.canPlaceToFoundation(cardComp, fd)) {
                 this.moveStack(cardNode, [cardNode], fd, originalParentNode);
                 this.addScore(10);
                 return true;
@@ -364,7 +349,7 @@ export class UIPlay extends VMParentView {
         return false;
     }
 
-    /** 翻牌处理：在 old pile 节点上翻最后一张 */
+    /** 翻牌处理：在 old pile 节点上翻最后一张（会把翻牌操作加入 undo） */
     private tryFlipLastCard(pileNode: Node | undefined | null) {
         if (!pileNode) return;
         const children = pileNode.children;
@@ -381,7 +366,7 @@ export class UIPlay extends VMParentView {
                 oldPositions: [last.position.clone()],
                 newPositions: [last.position.clone()],
                 flip: { card: last, wasFaceUp: false }
-            } as UndoMove);
+            } as any);
             c.flipFaceUp();
         }
     }
@@ -398,16 +383,15 @@ export class UIPlay extends VMParentView {
             });
         }
 
-        // 调整 Foundation 卡牌位置，使它们重叠
+        // Foundation 重叠
         for (const pile of this.foundation) {
             pile.node.children.forEach((cardNode) => {
-                cardNode.setPosition(0, 0); // 所有卡牌重叠在一起
+                cardNode.setPosition(0, 0);
             });
         }
     }
 
-    /** 自动通关：当一轮无移动时尝试翻 stock 或 recycle（并等待动画短暂完成） */
     async autoSolve() {
-        // placeholder - 你可以使用 AutoSolver 类来实现自动步骤
+        // placeholder：可以接 AutoSolver
     }
 }

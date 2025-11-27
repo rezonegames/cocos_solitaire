@@ -7845,6 +7845,7 @@
     "quickClose": false,
     "cache": false,
     "showType": 2,
+    "stockButton": null,
     "cardPrefab": {
       "__uuid__": "dded07d0-e28c-4478-b887-a978b5d2cb10",
       "__expectedType__": "cc.Prefab"
