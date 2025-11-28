@@ -21,5 +21,20 @@
   "script": {
     "preserveSymlinks": true
   },
-  "custom_joint_texture_layouts": []
+  "custom_joint_texture_layouts": [],
+  "sorting-layer": {
+    "layers": [
+      {
+        "id": 0,
+        "name": "default",
+        "value": 0
+      },
+      {
+        "id": 3,
+        "name": "card-layer",
+        "value": 1
+      }
+    ],
+    "increaseId": 3
+  }
 }

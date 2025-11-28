@@ -2494,7 +2494,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node",
+    "_name": "f-000",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -2630,7 +2630,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node-001",
+    "_name": "f-001",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -2766,7 +2766,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node-002",
+    "_name": "f-002",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -2902,7 +2902,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node-003",
+    "_name": "f-003",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -3174,7 +3174,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node",
+    "_name": "s",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -3310,7 +3310,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node-001",
+    "_name": "w",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -3730,7 +3730,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node",
+    "_name": "s-000",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -3866,7 +3866,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node-001",
+    "_name": "s-001",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -4002,7 +4002,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node-002",
+    "_name": "s-002",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -4138,7 +4138,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node-003",
+    "_name": "s-003",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -4274,7 +4274,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node-004",
+    "_name": "s-004",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -4410,7 +4410,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node-005",
+    "_name": "s-005",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -4546,7 +4546,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Node-006",
+    "_name": "s-006",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -7730,7 +7730,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "DragLayer",
+    "_name": "DragNode",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -7801,7 +7801,7 @@
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "abLmz3YP5Gtrnm2W25HlY3"
+    "fileId": "cdvvf7xtNMC73jE+rVWBD0"
   },
   {
     "__type__": "cc.PrefabInfo",
@@ -7811,7 +7811,7 @@
     "asset": {
       "__id__": 0
     },
-    "fileId": "cdVjPw6ppDAahzWFJei5Bn",
+    "fileId": "19gYhUKRVHn6RSM6HBGKrI",
     "instance": null,
     "targetOverrides": null,
     "nestedPrefabInstanceRoots": null
@@ -7859,6 +7859,9 @@
     "quickClose": false,
     "cache": false,
     "showType": 2,
+    "dragNode": {
+      "__id__": 338
+    },
     "stockButton": null,
     "cardPrefab": {
       "__uuid__": "dded07d0-e28c-4478-b887-a978b5d2cb10",
