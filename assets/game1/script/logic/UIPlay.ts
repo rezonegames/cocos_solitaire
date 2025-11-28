@@ -48,6 +48,12 @@ export class UIPlay extends VMParentView {
     private dragOffset: Vec3 = new Vec3();
     private selectedStack: Node[] = [];
 
+    // 自动跑关
+    private autoSolver: AutoSolver = null;
+
+    // 游戏运行状态
+    private _isRunning = false;
+
     start() {
         this.initGame();
 
@@ -108,25 +114,61 @@ export class UIPlay extends VMParentView {
     }
 
     endDrag() {
-        if (!this.selectedStack.length) return;
+        if (!this.selectedStack.length || !this.dragCopies.length) return;
 
-        // 恢复原始节点透明度
-        this.selectedStack.forEach((node, idx) => {
-            if (this.dragCopies[idx]) {
-                const copyWorldPos = this.dragCopies[idx].getWorldPosition();
-                node.setWorldPosition(copyWorldPos);
-            }
-            // 恢复透明度
-            node.getComponent(UIOpacity).opacity = 255;
-        });
+        // 使用副本进行碰撞检测和放置逻辑
+        const success = this.handleDropWithCopies(this.dragCopies[0], this.dragCopies);
 
-        // 处理放置逻辑
-        this.handleDrop(this.selectedStack[0], this.selectedStack);
+        if (success) {
+            // 放置成功：将原始节点移动到副本的最终位置，然后让 moveStack 处理
+            this.selectedStack.forEach((node, idx) => {
+                if (this.dragCopies[idx]) {
+                    const copyWorldPos = this.dragCopies[idx].getWorldPosition();
+                    node.setWorldPosition(copyWorldPos);
+                }
+                node.getComponent(UIOpacity).opacity = 255;
+            });
+
+            // 执行实际的移动逻辑
+            this.handleDrop(this.selectedStack[0], this.selectedStack);
+        } else {
+            // 放置失败：直接恢复原始节点的显示，位置不变
+            this.selectedStack.forEach(node => {
+                node.getComponent(UIOpacity).opacity = 255;
+            });
+        }
 
         // 清理副本和选中栈
         this.dragCopies.forEach(copy => copy.destroy());
         this.dragCopies = [];
         this.selectedStack = [];
+    }
+
+    /** 使用副本进行碰撞检测，返回是否可以放置 */
+    handleDropWithCopies(copyCardNode: Node, copyStack: Node[]): boolean {
+        const originalCard = this.selectedStack[0];
+        const cardComp = originalCard.getComponent(Card)!;
+
+        // Foundation 优先
+        for (const fd of this.foundation) {
+            if (this.isNearNode(fd.node, copyStack[0]) && this.canPlaceToFoundation(cardComp, fd)) {
+                return true;
+            }
+        }
+
+        // Tableau 判定
+        for (const pile of this.tableau) {
+            const topCard = pile.getTopCard();
+            if (originalCard.parent !== pile.node && this.isNearNode(topCard || pile.node, copyStack[0])) {
+                if (this.canPlaceToTableau(cardComp, pile)) {
+                    return true;
+                } else {
+                    return false; // 命中但不允许放置
+                }
+            }
+        }
+
+        return false; // 未命中任何目标
     }
 
     /** 初始化游戏 */
@@ -152,9 +194,11 @@ export class UIPlay extends VMParentView {
 
         this.undoManager = new UndoManager();
         this.factory = new CardFactory(this.cardPrefab);
+        this.autoSolver = new AutoSolver();
+        this.autoSolver.init(this);
 
         let deck = this.factory.generateDeck();
-        this.factory.shuffle(deck);
+        this.factory.shuffle1(deck, 1);
 
         // 发牌到 tableau
         for (let col = 0; col < 7; col++) {
@@ -199,6 +243,15 @@ export class UIPlay extends VMParentView {
     /** 获取从指定牌开始的牌堆 */
     getStackFrom(cardNode: Node): Node[] {
         const parent = cardNode.parent!;
+        const parentPile = parent.getComponent(Pile);
+
+        // waste 只能取顶牌（一张）
+        if (parentPile && (parentPile as any).isWaste) {
+            const topCard = parentPile.getTopCard();
+            return topCard === cardNode ? [cardNode] : [];
+        }
+
+        // 其他情况按原逻辑处理
         const children = parent.children;
         const idx = children.indexOf(cardNode);
         return children.slice(idx);
@@ -440,32 +493,68 @@ export class UIPlay extends VMParentView {
     onUndo() {
         const action = this.undoManager.pop();
         if (!action) return;
+
+        // 处理翻牌操作
         if (action.flip) {
-            const card = action.flip.card;
-            const c = card.getComponent(Card);
-            if (action.flip.wasFaceUp) c.flipFaceUp(); else c.flipFaceDown();
+            const card = action.flip.card.getComponent(Card);
+            if (action.flip.wasFaceUp) {
+                card.flipFaceUp();
+            } else {
+                card.flipFaceDown();
+            }
             return;
         }
-        const {cards, from, oldPositions} = action;
-        for (let i = cards.length - 1; i >= 0; i--) {
-            const node = cards[i];
-            node.parent = from.node;
+
+        // 处理移动操作
+        const { cards, from, to, oldPositions } = action;
+
+        // 将牌从目标位置移回原位置
+        cards.forEach((cardNode, index) => {
+            cardNode.parent = from.node;
+            cardNode.setPosition(oldPositions[index]);
+        });
+
+        // 重新排列原pile中的牌的位置
+        this.repositionPileCards(from);
+
+        // 如果目标pile不为空，也重新排列
+        if (to && to !== from) {
+            this.repositionPileCards(to);
         }
 
-        const isTableau = (from as any).isTableau;
-        if (isTableau) {
-            const off = this.computeTableauOffsetForPile(from.node.children.length);
-            from.node.children.forEach((n, idx) => n.setPosition(0, -idx * off));
-        } else {
-            cards.forEach((n) => n.setPosition(0, 0));
-        }
-
+        // 减少移动次数
         this.data.moves = Math.max(0, this.data.moves - 1);
     }
 
+    /**
+     * 重新排列pile中牌的位置
+     */
+    private repositionPileCards(pile: Pile) {
+        const isTableau = (pile as any).isTableau;
+        const children = pile.node.children;
+
+        if (isTableau) {
+            const offset = this.computeTableauOffsetForPile(children.length);
+            children.forEach((cardNode, index) => {
+                cardNode.setPosition(0, -index * offset, 0);
+            });
+        } else {
+            // Foundation, Stock, Waste 等都叠在一起
+            children.forEach(cardNode => {
+                cardNode.setPosition(0, 0, 0);
+            });
+        }
+    }
+
     async autoSolve() {
-        const autoSolver = new AutoSolver();
-        autoSolver.init(this);
-        autoSolver.start()
+        this.autoSolver.start()
+    }
+
+    onPause() {
+        this.autoSolver.stop();
+    }
+
+    update(delta: number) {
+        this.updateTime(delta);
     }
 }
