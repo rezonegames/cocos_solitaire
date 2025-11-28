@@ -290,7 +290,7 @@ export class UIPlay extends VMParentView {
 
     tryRecycleWasteToStock() {
         const topCard = this.waste.getTopCard();
-        if(topCard?.getComponent(Card).rank === 1) {
+        if (topCard?.getComponent(Card).rank === 1) {
             return;
         }
         if (this.stock.isEmpty()) {
@@ -506,7 +506,7 @@ export class UIPlay extends VMParentView {
         }
 
         // 处理移动操作
-        const { cards, from, to, oldPositions } = action;
+        const {cards, from, to, oldPositions} = action;
 
         // 将牌从目标位置移回原位置
         cards.forEach((cardNode, index) => {
@@ -547,11 +547,15 @@ export class UIPlay extends VMParentView {
     }
 
     async autoSolve() {
-        this.autoSolver.start()
+        if (this.autoSolver.isRunning()) {
+            this.autoSolver.stop();
+        } else {
+            this.autoSolver.start();
+        }
     }
 
     onPause() {
-        this.autoSolver.stop();
+        this.autoSolver.tryShuffleAndRetry();
     }
 
     onWasteToStock() {
