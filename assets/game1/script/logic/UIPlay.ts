@@ -554,6 +554,10 @@ export class UIPlay extends VMParentView {
         this.autoSolver.stop();
     }
 
+    onWasteToStock() {
+        this.tryRecycleWasteToStock()
+    }
+
     update(delta: number) {
         this.updateTime(delta);
     }

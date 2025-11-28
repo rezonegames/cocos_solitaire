@@ -42,10 +42,6 @@ export class CardDrag extends Component {
             return;
         }
 
-        if (this.node.parent === this.game.waste.node) {
-            this.game.tryRecycleWasteToStock();
-        }
-
         // 记录触点偏移
         const ui = this.node.getComponent(UITransform)!;
         const loc = e.getUILocation();
