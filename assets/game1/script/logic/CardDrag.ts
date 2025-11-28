@@ -33,7 +33,7 @@ export class CardDrag extends Component {
             if (this.game && this.node.parent !== this.game.stock.node) {
                 const c = this.node.getComponent(Card);
                 if (c && c.isFaceUp) {
-                    this.game.tryAutoToFoundation(this.node);
+                    this.game.tryAutoToFoundation(this.node)
                 }
             }
             this.lastClick = 0;
@@ -47,6 +47,11 @@ export class CardDrag extends Component {
         if (this.node.parent === this.game.stock.node) {
             this.game.onClickStock();
             return;
+        }
+
+        // 检测将waste的牌会收到stock
+        if (this.node.parent === this.game.waste.node) {
+            this.game.tryRecycleWasteToStock();
         }
 
         const ui = this.node.getComponent(UITransform)!;

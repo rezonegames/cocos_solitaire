@@ -14,6 +14,10 @@ export class Pile extends Component {
         return c.length > 0 ? c[c.length - 1] : null;
     }
 
+    isEmpty() {
+        return this.node.children.length <= 0;
+    }
+
     addCard(card: Node) {
         card.setParent(this.node);
     }
