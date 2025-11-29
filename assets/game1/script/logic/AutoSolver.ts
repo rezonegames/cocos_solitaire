@@ -318,37 +318,10 @@ export class AutoSolver {
     }
 
     /** 打乱扣着的牌重试 */
-    private tryShuffleAndRetry(): boolean {
+    tryShuffleAndRetry(): boolean {
         if (this.retryCount >= this.maxRetries) return false;
-
         this.retryCount++;
-
-        // 收集所有扣着的牌
-        const faceDownCards: Node[] = [];
-        for (const pile of this.playing.tableau) {
-            for (const cardNode of pile.node.children) {
-                const card = cardNode.getComponent(Card)!;
-                if (!card.isFaceUp) {
-                    faceDownCards.push(cardNode);
-                }
-            }
-        }
-
-        if (faceDownCards.length === 0) return false;
-
-        // 重新随机分配花色和点数
-        for (const cardNode of faceDownCards) {
-            const card = cardNode.getComponent(Card)!;
-            const newSuit = suits[Math.floor(Math.random() * 4)];
-            const newRank = Math.floor(Math.random() * 13) + 1;
-
-            // 重新初始化牌
-            card.init(newSuit, newRank);
-            card.flipFaceDown(); // 确保还是扣着的
-        }
-
-        console.log(`AutoSolver: 第 ${this.retryCount} 次重试，重新设置了 ${faceDownCards.length} 张扣着的牌`);
-        return true;
+        return this.playing.tryShuffleAndRetry();
     }
 
     /** 重置所有计数器 */

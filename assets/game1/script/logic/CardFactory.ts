@@ -33,38 +33,178 @@ export class CardFactory {
     }
 
     /**
-     * 根据关卡难度进行洗牌
-     * @param deck 牌组
-     * @param level 关卡等级 (1-100)
+     * 根据关卡难度进行洗牌 - 高级算法
      */
     shuffle1(deck: Node[], level: number) {
-        // 限制等级范围
         level = Math.max(1, Math.min(100, level));
 
-        // 根据难度调整洗牌策略
+        // 使用固定种子确保同一关卡结果一致
+        const seed = this.seededRandom(level);
+
+        // 先正常洗牌
+        this.seededShuffle(deck, seed);
+
         if (level <= 20) {
-            // 简单难度：部分有序洗牌
-            const seed = this.seededRandom(level);
-            this.partialShuffle(deck, 0.3, seed);
-        } else if (level <= 50) {
-            // 中等难度：标准洗牌
-            const seed = this.seededRandom(level);
-            this.seededShuffle(deck, seed);
-        } else if (level <= 80) {
-            // 困难难度：多次洗牌
-            const seed1 = this.seededRandom(level);
-            const seed2 = this.seededRandom(level + 1000); // 使用不同的种子值
-            this.seededShuffle(deck, seed1);
-            this.seededShuffle(deck, seed2);
+            this.optimizeForBeginner(deck, seed, level);
+        } else if (level <= 40) {
+            this.optimizeForIntermediate(deck, seed, level);
+        } else if (level <= 70) {
+            this.optimizeForAdvanced(deck, seed, level);
         } else {
-            // 极难难度：完全随机 + 特殊排列
-            const seed1 = this.seededRandom(level);
-            const seed2 = this.seededRandom(level + 1000);
-            const seed3 = this.seededRandom(level + 2000);
-            this.seededShuffle(deck, seed1);
-            this.seededShuffle(deck, seed2);
-            this.createDifficultPattern(deck, seed3);
+            this.optimizeForMaster(deck, seed, level);
         }
+    }
+
+    /**
+     * 优化初学者布局：在现有牌组基础上调整
+     */
+    private optimizeForBeginner(deck: Node[], randomFunc: () => number, level: number) {
+        const easyFactor = (21 - level) / 20; // 1.0 到 0.05
+        const tableauCards = deck.slice(0, 28);
+
+        // 只调整部分牌，不是全部重写
+        for (let col = 0; col < 7; col++) {
+            const topIndex = this.getTableauTopIndex(col);
+            if (topIndex < tableauCards.length && randomFunc() < easyFactor * 0.6) {
+                const topCard = tableauCards[topIndex].getComponent(Card)!;
+
+                // 有概率设置为中等大小的牌
+                if (randomFunc() < 0.5) {
+                    
+                    const suit = suits[Math.floor(randomFunc() * 4)];
+                    const rank = Math.floor(randomFunc() * 6) + 6; // 6-11
+                    topCard.init(suit, rank);
+
+                    // 尝试在其他列创建可接续的牌
+                    this.tryCreateConnection(tableauCards, col, topCard, randomFunc);
+                }
+            }
+        }
+
+        // 调整一些底牌为小牌，增加翻牌价值
+        this.adjustBuriedCards(tableauCards, randomFunc, easyFactor);
+    }
+
+    /**
+     * 尝试创建连接
+     */
+    private tryCreateConnection(tableauCards: Node[], currentCol: number, topCard: Card, randomFunc: () => number) {
+        const topRank = topCard.rank;
+        const topColor = topCard.getColor();
+
+        // 30% 概率在其他列创建可连接的牌
+        if (randomFunc() < 0.3 && topRank > 1) {
+            for (let targetCol = 0; targetCol < 7; targetCol++) {
+                if (targetCol === currentCol) continue;
+
+                const targetTopIndex = this.getTableauTopIndex(targetCol);
+                if (targetTopIndex < tableauCards.length && randomFunc() < 0.4) {
+                    const targetCard = tableauCards[targetTopIndex].getComponent(Card)!;
+
+                    // 创建可以放置的牌 (rank-1, 不同颜色)['hx', 'fk', 'ht', 'mh']
+                    const suits = topColor === 'red' ? ['ht', 'mh'] : ['hx', 'fk'];
+                    const suit = suits[Math.floor(randomFunc() * 2)];
+                    targetCard.init(suit, topRank - 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * 调整埋藏的牌
+     */
+    private adjustBuriedCards(tableauCards: Node[], randomFunc: () => number, helpFactor: number) {
+        // 在简单关卡中，让一些埋藏的牌变成有用的小牌
+        for (let i = 0; i < Math.floor(tableauCards.length * 0.6); i++) {
+            if (randomFunc() < helpFactor * 0.2) {
+                const card = tableauCards[i].getComponent(Card)!;
+                
+                const suit = suits[Math.floor(randomFunc() * 4)];
+
+                // 60% A, 40% 其他小牌
+                const rank = randomFunc() < 0.6 ? 1 : Math.floor(randomFunc() * 4) + 2;
+                card.init(suit, rank);
+            }
+        }
+    }
+
+    /**
+     * 中级优化
+     */
+    private optimizeForIntermediate(deck: Node[], randomFunc: () => number, level: number) {
+        const tableauCards = deck.slice(0, 28);
+
+        // 只调整少量牌
+        for (let col = 0; col < 7; col++) {
+            const topIndex = this.getTableauTopIndex(col);
+            if (topIndex < tableauCards.length && randomFunc() < 0.3) {
+                const topCard = tableauCards[topIndex].getComponent(Card)!;
+
+                if (randomFunc() < 0.4) {
+                    
+                    const suit = suits[Math.floor(randomFunc() * 4)];
+                    const rank = Math.floor(randomFunc() * 8) + 4; // 4-11
+                    topCard.init(suit, rank);
+                }
+            }
+        }
+    }
+
+    /**
+     * 高级和大师级优化
+     */
+    private optimizeForAdvanced(deck: Node[], randomFunc: () => number, level: number) {
+        const tableauCards = deck.slice(0, 28);
+
+        // 让一些顶牌变成大牌，增加难度
+        for (let col = 0; col < 7; col++) {
+            const topIndex = this.getTableauTopIndex(col);
+            if (topIndex < tableauCards.length && randomFunc() < 0.4) {
+                const topCard = tableauCards[topIndex].getComponent(Card)!;
+
+                
+                const suit = suits[Math.floor(randomFunc() * 4)];
+                const rank = Math.floor(randomFunc() * 4) + 10; // 10-13 大牌
+                topCard.init(suit, rank);
+            }
+        }
+    }
+
+    private optimizeForMaster(deck: Node[], randomFunc: () => number, level: number) {
+        // 大师级：让更多顶牌变成难以移动的大牌
+        this.optimizeForAdvanced(deck, randomFunc, level);
+
+        const tableauCards = deck.slice(0, 28);
+
+        // 额外增加一些阻塞
+        for (let i = 0; i < Math.floor(tableauCards.length * 0.3); i++) {
+            if (randomFunc() < 0.3) {
+                const card = tableauCards[i].getComponent(Card)!;
+                
+                const suit = suits[Math.floor(randomFunc() * 4)];
+                const rank = Math.floor(randomFunc() * 3) + 1; // 1-3 关键小牌被埋
+                card.init(suit, rank);
+            }
+        }
+    }
+
+    /**
+     * 获取tableau列的起始索引
+     */
+    private getTableauColumnStart(col: number): number {
+        let start = 0;
+        for (let i = 0; i < col; i++) {
+            start += i + 1;
+        }
+        return start;
+    }
+
+    /**
+     * 获取tableau列顶牌的索引
+     */
+    private getTableauTopIndex(col: number): number {
+        return this.getTableauColumnStart(col) + col;
     }
 
     /**
@@ -85,40 +225,6 @@ export class CardFactory {
         for (let i = deck.length - 1; i > 0; i--) {
             const j = Math.floor(randomFunc() * (i + 1));
             [deck[i], deck[j]] = [deck[j], deck[i]];
-        }
-    }
-
-    /**
-     * 部分洗牌（保持一定有序性）
-     */
-    private partialShuffle(deck: Node[], shuffleRatio: number, randomFunc: () => number) {
-        const shuffleCount = Math.floor(deck.length * shuffleRatio);
-
-        for (let i = 0; i < shuffleCount; i++) {
-            const pos1 = Math.floor(randomFunc() * deck.length);
-            const pos2 = Math.floor(randomFunc() * deck.length);
-            [deck[pos1], deck[pos2]] = [deck[pos2], deck[pos1]];
-        }
-    }
-
-    /**
-     * 创建困难模式的特殊排列
-     */
-    private createDifficultPattern(deck: Node[], randomFunc: () => number) {
-        // 将大牌尽量放在小牌下面，增加难度
-        const cards = deck.map(node => ({
-            node,
-            rank: node.getComponent(Card)!.rank
-        }));
-
-        // 按rank排序，大牌在前
-        cards.sort((a, b) => b.rank - a.rank);
-
-        // 重新排列到deck中，但加入一些随机性
-        for (let i = 0; i < cards.length; i++) {
-            if (randomFunc() < 0.7) { // 70%概率保持困难排列
-                deck[i] = cards[i].node;
-            }
         }
     }
 }

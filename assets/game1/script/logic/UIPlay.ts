@@ -2,7 +2,7 @@ import {_decorator, Canvas, director, Node, Prefab, tween, UITransform, Vec3, in
 import _ from 'lodash-es';
 import VMParentView from "db://assets/libs/gui/VMParentView";
 import {CardFactory} from './CardFactory';
-import {Card} from './Card';
+import {Card, suits} from './Card';
 import {Pile} from './Pile';
 import {UndoManager} from './UndoManager';
 import {AutoSolver} from "db://assets/game1/script/logic/AutoSolver";
@@ -546,6 +546,97 @@ export class UIPlay extends VMParentView {
         }
     }
 
+    /** 打乱扣着的牌重试 */
+    tryShuffleAndRetry() {
+        // 收集所有扣着的牌
+        const faceDownCards: Node[] = [];
+        for (const pile of this.tableau) {
+            for (const cardNode of pile.node.children) {
+                const card = cardNode.getComponent(Card)!;
+                if (!card.isFaceUp) {
+                    faceDownCards.push(cardNode);
+                }
+            }
+        }
+        for (const cardNode of this.stock.node.children) {
+            const card = cardNode.getComponent(Card)!;
+            if (!card.isFaceUp) {
+                faceDownCards.push(cardNode);
+            }
+        }
+        for (const cardNode of this.waste.node.children) {
+            faceDownCards.push(cardNode);
+        }
+
+        if (faceDownCards.length === 0) return false;
+
+        // 保存原始的牌信息
+        const originalCards = faceDownCards.map(node => {
+            const card = node.getComponent(Card)!;
+            return {suit: card.suit, rank: card.rank};
+        });
+
+        // 打乱原始牌信息
+        for (let i = originalCards.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [originalCards[i], originalCards[j]] = [originalCards[j], originalCards[i]];
+        }
+
+        // 添加洗牌动画并重新分配
+        // 洗牌动画：分阶段进行
+        faceDownCards.forEach((cardNode, index) => {
+            const card = cardNode.getComponent(Card)!;
+            const originalPos = cardNode.position.clone();
+            const delay = index * 0.05; // 错开动画时间
+
+            tween(cardNode)
+                .delay(delay)
+                // 第一阶段：向上飞起并旋转
+                .parallel(
+                    tween().to(0.3, {
+                        position: new Vec3(originalPos.x, originalPos.y + 100, originalPos.z)
+                    }),
+                    tween().to(0.3, {
+                        scale: new Vec3(0.8, 0.8, 1)
+                    }),
+                    tween().by(0.3, {
+                        eulerAngles: new Vec3(0, 0, 360)
+                    })
+                )
+                // 第二阶段：水平翻转并重新设置牌
+                .to(0.2, {scale: new Vec3(0, 0.8, 1)})
+                .call(() => {
+                    // 在翻转中间重新设置牌
+                    card.init(originalCards[index].suit, originalCards[index].rank);
+                    // if(card.isFaceUp) {
+                    //     card.flipFaceDown();
+                    // }
+                    //
+                })
+                // 第三阶段：翻转回来
+                .to(0.2, {scale: new Vec3(0.8, 0.8, 1)})
+                // 第四阶段：落回原位
+                .parallel(
+                    tween().to(0.4, {
+                        position: originalPos
+                    }),
+                    tween().to(0.4, {
+                        scale: new Vec3(1, 1, 1)
+                    }),
+                    tween().to(0.4, {
+                        eulerAngles: new Vec3(0, 0, 0)
+                    }),
+                    tween().to(0.4, {
+                        scale: new Vec3(0.66, 0.66, 1)
+                    }),
+                )
+                .start();
+        });
+        console.log(`AutoSolver: 打乱了 ${faceDownCards.length} 张扣着的牌`);
+        return true;
+    }
+
+
     async autoSolve() {
         if (this.autoSolver.isRunning()) {
             this.autoSolver.stop();
@@ -555,7 +646,7 @@ export class UIPlay extends VMParentView {
     }
 
     onPause() {
-        this.autoSolver.tryShuffleAndRetry();
+        this.tryShuffleAndRetry();
     }
 
     onWasteToStock() {
