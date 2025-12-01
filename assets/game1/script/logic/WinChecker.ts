@@ -29,8 +29,7 @@ export class WinChecker {
 
         if (count === 52) {
             this.locked = true;
-            // todo：game win
-            // this.playing.onGameWin();
+            this.playing.onGameWin();
         }
     }
 

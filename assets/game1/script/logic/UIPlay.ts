@@ -5,8 +5,9 @@ import {CardFactory} from './CardFactory';
 import {Card, suits} from './Card';
 import {Pile} from './Pile';
 import {UndoManager} from './UndoManager';
-import {AutoSolver} from "db://assets/game1/script/logic/AutoSolver";
-import {logger} from "db://assets/libs/log/Logger";
+import {AutoSolver} from "./AutoSolver";
+import {WinChecker} from "./WinChecker";
+import {WinAnimation} from "./WinAnimation";
 
 const {ccclass, property} = _decorator;
 
@@ -29,7 +30,7 @@ export class UIPlay extends VMParentView {
     @property([Node]) foundationRoots: Node[] = [];
 
     @property
-    tableauOffset = 35;
+    tableauOffset = 38;
 
     @property
     maxTableauVisibleHeight = 600;
@@ -50,6 +51,8 @@ export class UIPlay extends VMParentView {
 
     // 自动跑关
     private autoSolver: AutoSolver = null;
+    private winChecker: WinChecker = null;
+    private winAnimation: WinAnimation = null;
 
     // 游戏运行状态
     private _isRunning = false;
@@ -79,10 +82,6 @@ export class UIPlay extends VMParentView {
 
     addMoves(moves: number = 0) {
         this.data.moves += moves;
-    }
-
-    getTableauOffset() {
-        return this.tableauOffset;
     }
 
     // 拖拽相关方法
@@ -194,9 +193,6 @@ export class UIPlay extends VMParentView {
 
         this.undoManager = new UndoManager();
         this.factory = new CardFactory(this.cardPrefab);
-        this.autoSolver = new AutoSolver();
-        this.autoSolver.init(this);
-
         let deck = this.factory.generateDeck();
         this.factory.shuffle1(deck, 1);
 
@@ -217,6 +213,16 @@ export class UIPlay extends VMParentView {
             this.stock.addCard(card);
             card.getComponent(Card)!.flipFaceDown();
         }
+
+        // 自动完成
+        this.autoSolver = new AutoSolver();
+        this.autoSolver.init(this);
+        // 动画
+        this.winAnimation = new WinAnimation();
+        this.winAnimation.init(this);
+        // 检查是否赢牌
+        this.winChecker = new WinChecker();
+        this.winChecker.init(this);
 
         this.onScreenResize();
     }
@@ -417,9 +423,12 @@ export class UIPlay extends VMParentView {
             const worldTarget = targetBaseWorld.clone().add(new Vec3(0, isTableau ? -i * offset : 0, 0));
 
             tween(node)
-                .to(0.12, {worldPosition: worldTarget})
+                .to(0.2, {worldPosition: worldTarget})
                 .call(() => {
                     node.parent = targetPile.node;
+
+                    // 关键修复：设置正确的渲染顺序
+                    node.setSiblingIndex(existing + i);
 
                     if (isFoundation || isWaste || isStock) {
                         node.setPosition(0, 0);
@@ -429,10 +438,13 @@ export class UIPlay extends VMParentView {
                         node.setPosition(0, 0);
                     }
 
-                    this.addMoves(1);
-
                     if (i === total - 1) {
                         this.tryFlipLastCard(oldPileNode);
+                    }
+
+                    this.addMoves(1);
+                    if(targetPile.isFoundation) {
+                        this.winChecker.checkWin();
                     }
                 })
                 .start();
@@ -548,7 +560,7 @@ export class UIPlay extends VMParentView {
 
     /** 打乱扣着的牌重试 */
     tryShuffleAndRetry() {
-        // 收集所有扣着的牌
+        // 1. 收集所有扣着的牌节点
         const faceDownCards: Node[] = [];
         for (const pile of this.tableau) {
             for (const cardNode of pile.node.children) {
@@ -559,10 +571,7 @@ export class UIPlay extends VMParentView {
             }
         }
         for (const cardNode of this.stock.node.children) {
-            const card = cardNode.getComponent(Card)!;
-            if (!card.isFaceUp) {
-                faceDownCards.push(cardNode);
-            }
+            faceDownCards.push(cardNode);
         }
         for (const cardNode of this.waste.node.children) {
             faceDownCards.push(cardNode);
@@ -570,28 +579,59 @@ export class UIPlay extends VMParentView {
 
         if (faceDownCards.length === 0) return false;
 
-        // 保存原始的牌信息
-        const originalCards = faceDownCards.map(node => {
-            const card = node.getComponent(Card)!;
-            return {suit: card.suit, rank: card.rank};
-        });
+        // 2. 收集所有已经使用的牌（翻开的牌和foundation中的牌）
+        const usedCards = new Set<string>();
 
-        // 打乱原始牌信息
-        for (let i = originalCards.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [originalCards[i], originalCards[j]] = [originalCards[j], originalCards[i]];
+        // 收集 tableau 中翻开的牌
+        for (const pile of this.tableau) {
+            for (const cardNode of pile.node.children) {
+                const card = cardNode.getComponent(Card)!;
+                if (card.isFaceUp) {
+                    usedCards.add(`${card.suit}-${card.rank}`);
+                }
+            }
         }
 
-        // 添加洗牌动画并重新分配
-        // 洗牌动画：分阶段进行
+        // 收集 foundation 中的牌
+        for (const pile of this.foundation) {
+            for (const cardNode of pile.node.children) {
+                const card = cardNode.getComponent(Card)!;
+                usedCards.add(`${card.suit}-${card.rank}`);
+            }
+        }
+
+        // 3. 生成完整的52张牌，排除已使用的牌
+        const availableCards: {suit: string, rank: number}[] = [];
+        for (const suit of suits) {
+            for (let rank = 1; rank <= 13; rank++) {
+                const key = `${suit}-${rank}`;
+                if (!usedCards.has(key)) {
+                    availableCards.push({suit, rank});
+                }
+            }
+        }
+
+        // 4. 验证数量是否匹配
+        if (availableCards.length !== faceDownCards.length) {
+            console.error(`牌数不匹配！可用牌: ${availableCards.length}, 扣着的牌: ${faceDownCards.length}`);
+            return false;
+        }
+
+        // 5. 打乱可用的牌
+        for (let i = availableCards.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [availableCards[i], availableCards[j]] = [availableCards[j], availableCards[i]];
+        }
+
+        // 6. 添加洗牌动画并重新分配
         faceDownCards.forEach((cardNode, index) => {
             const card = cardNode.getComponent(Card)!;
             const originalPos = cardNode.position.clone();
-            const delay = index * 0.05; // 错开动画时间
+            const delay = index * 0.05;
 
             tween(cardNode)
                 .delay(delay)
-                // 第一阶段：向上飞起并旋转
+                // 向上飞起并旋转
                 .parallel(
                     tween().to(0.3, {
                         position: new Vec3(originalPos.x, originalPos.y + 100, originalPos.z)
@@ -603,36 +643,30 @@ export class UIPlay extends VMParentView {
                         eulerAngles: new Vec3(0, 0, 360)
                     })
                 )
-                // 第二阶段：水平翻转并重新设置牌
+                // 水平翻转
                 .to(0.2, {scale: new Vec3(0, 0.8, 1)})
                 .call(() => {
-                    // 在翻转中间重新设置牌
-                    card.init(originalCards[index].suit, originalCards[index].rank);
-                    // if(card.isFaceUp) {
-                    //     card.flipFaceDown();
-                    // }
-                    //
+                    // 重新设置牌
+                    card.init(availableCards[index].suit, availableCards[index].rank);
                 })
-                // 第三阶段：翻转回来
+                // 翻转回来
                 .to(0.2, {scale: new Vec3(0.8, 0.8, 1)})
-                // 第四阶段：落回原位
+                // 落回原位
                 .parallel(
                     tween().to(0.4, {
                         position: originalPos
-                    }),
-                    tween().to(0.4, {
-                        scale: new Vec3(1, 1, 1)
                     }),
                     tween().to(0.4, {
                         eulerAngles: new Vec3(0, 0, 0)
                     }),
                     tween().to(0.4, {
                         scale: new Vec3(0.66, 0.66, 1)
-                    }),
+                    })
                 )
                 .start();
         });
-        console.log(`AutoSolver: 打乱了 ${faceDownCards.length} 张扣着的牌`);
+
+        console.log(`打乱了 ${faceDownCards.length} 张扣着的牌`);
         return true;
     }
 
@@ -651,6 +685,10 @@ export class UIPlay extends VMParentView {
 
     onWasteToStock() {
         this.tryRecycleWasteToStock()
+    }
+
+    onGameWin() {
+        this.winAnimation.play();
     }
 
     update(delta: number) {
