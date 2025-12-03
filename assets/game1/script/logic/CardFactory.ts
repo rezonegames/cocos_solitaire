@@ -1,6 +1,8 @@
 import {_decorator, instantiate, Prefab, Node} from 'cc';
+import _ from 'lodash-es';
 import {Card, suits} from './Card';
 import {ResUtil} from "db://assets/libs/res/ResUtil";
+import {logger} from "db://assets/libs/log/Logger";
 
 const {ccclass, property} = _decorator;
 
@@ -12,16 +14,37 @@ export class CardFactory {
     ) {
     }
 
-    generateDeck(): Node[] {
+    generateDeck(kind: string, level: number): Node[] {
+        const m = {
+            '1_1': "24,39,3,27,19,37,9,25,22,1,44,48,8,36,40,41,35,7,23,51,32,49,34,2,20,31,16,4,50,28,43,33,10,26,38,12,21,45,5,30,42,17,52,13,14,29,46,15,18,47,11,6"
+        }
+        const key = `${kind}_${level}`;
+        const v = m[key];
         const deck: Node[] = [];
-        for (const suit of suits) {
-            for (let rank = 1; rank <= 13; rank++) {
+        if (!v) {
+            for (const suit of suits) {
+                for (let rank = 1; rank <= 13; rank++) {
+                    const cardNode = ResUtil.instantiate(this.cardPrefab);
+                    const card = cardNode.getComponent(Card)!;
+                    card.init(suit, rank);
+                    deck.push(cardNode);
+                }
+            }
+            this.shuffle1(deck, level);
+        } else {
+            const vList = v.split(',');
+            _.forEach(vList, (def) => {
+                const n = _.toNumber(def)
+                const suitIndex = Math.floor((n - 1) / 13)
+                const suit = suits[suitIndex]
+                const rank = (n - 1) % 13 + 1
                 const cardNode = ResUtil.instantiate(this.cardPrefab);
                 const card = cardNode.getComponent(Card)!;
-                card.init(suit, rank);
+                card.init(suit, rank, def);
                 deck.push(cardNode);
-            }
+            })
         }
+
         return deck;
     }
 
@@ -48,7 +71,7 @@ export class CardFactory {
         const stockCards = deck.slice(28);
 
         // 找出所有小牌（A, 2, 3）
-        const allSmallCards: {node: Node, index: number, inStock: boolean}[] = [];
+        const allSmallCards: { node: Node, index: number, inStock: boolean }[] = [];
         tableauCards.forEach((node, i) => {
             const card = node.getComponent(Card)!;
             if (card.rank <= 3) {

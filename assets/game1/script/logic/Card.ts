@@ -2,10 +2,13 @@ import {_decorator, Component, Node, Sprite, SpriteFrame, tween, Vec3} from 'cc'
 import _ from 'lodash-es';
 import {bundleName} from "db://assets/game1/script/YY";
 import {ResUtil} from "db://assets/libs/res/ResUtil";
+import {logger} from "db://assets/libs/log/Logger";
 
 const {ccclass, property} = _decorator;
 
-export const suits = ['hx', 'fk', 'ht', 'mh']
+// 位置不变，否则key就变了，从小到大 草花，方块，黑桃，红心
+// export const suits = ['mh', 'fk', 'ht', 'hx']
+export const suits = ['fk', 'mh', 'hx', 'ht']
 
 @ccclass('Card')
 export class Card extends Component {
@@ -18,11 +21,21 @@ export class Card extends Component {
 
     suit: string;
     rank: number;
+    key: string;
     isFaceUp = false;
 
-    init(suit: string, rank: number) {
-        this.suit = suit as any;
+    detail() {
+        return `key: ${this.key} suit: ${this.suit} rank: ${this.rank} isFaceUp: ${this.isFaceUp}`;
+    }
+
+    init(suit: string, rank: number, key?: string) {
+        this.suit = suit;
         this.rank = rank;
+        this.key = key;
+        if(!this.key) {
+            this.key = (_.findIndex(suits, suit)*13 + rank).toString();
+        }
+        logger.logView(`init: ${this.key}, ${this.suit}, ${this.rank}`);
         this.node.setScale(0.66, 0.66, 1);   // 整体缩放 Card 大小
         this.loadSprites();
     }

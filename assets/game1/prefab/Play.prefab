@@ -6638,7 +6638,7 @@
     },
     "component": "",
     "_componentId": "681edd2m6hFspRshRkJiDmG",
-    "handler": "autoSolve",
+    "handler": "tryShuffleAndRetry",
     "customEventData": ""
   },
   {
@@ -7332,7 +7332,7 @@
     },
     "component": "",
     "_componentId": "681edd2m6hFspRshRkJiDmG",
-    "handler": "onPause",
+    "handler": "autoSolve",
     "customEventData": ""
   },
   {

@@ -1,6 +1,5 @@
 import {_decorator, Component, EventTouch, Node, UITransform, Vec3} from 'cc';
 import {UIPlay} from './UIPlay';
-import {Card} from './Card';
 
 const {ccclass, property} = _decorator;
 
@@ -10,6 +9,10 @@ export class CardDrag extends Component {
     private offset: Vec3 = new Vec3();
     private dragging = false;
     private lastClick = 0;
+    private touchStartPos: Vec3 = new Vec3();
+    private static readonly CLICK_MOVE_THRESHOLD = 5;
+    private static readonly CLICK_MAX_DURATION = 200;
+    private hasStartedDrag = false;
 
     onLoad() {
         if (!this.game) {
@@ -23,46 +26,78 @@ export class CardDrag extends Component {
 
     onTouchStart(e: EventTouch) {
         const now = Date.now();
+        // 双击判定（优先级最高）
         if (now - this.lastClick < 250) {
-            if (this.game && this.node.parent !== this.game.stock.node) {
-                const c = this.node.getComponent(Card);
-                if (c && c.isFaceUp) {
-                    this.game.tryAutoToFoundation(this.node);
-                }
-            }
+            this.game?.onDBClickCard(this.node);
             this.lastClick = 0;
+            this.dragging = false;
+            this.hasStartedDrag = false;
             return;
         }
         this.lastClick = now;
 
         if (!this.game) return;
 
-        if (this.node.parent === this.game.stock.node) {
-            this.game.onClickStock();
-            return;
-        }
-
-        // 记录触点偏移
-        const ui = this.node.getComponent(UITransform)!;
+        // 记录触摸开始位置和偏移
         const loc = e.getUILocation();
+        this.touchStartPos.set(loc.x, loc.y);
+        const ui = this.node.getComponent(UITransform)!;
         ui.convertToNodeSpaceAR(new Vec3(loc.x, loc.y), this.offset);
 
-        this.dragging = true;
-
-        // 让 UIPlay 处理拖拽开始
-        this.game.startDrag(this.node, this.offset);
+        this.dragging = false;
+        this.hasStartedDrag = false;
     }
 
     onTouchMove(e: EventTouch) {
-        if (!this.dragging || !this.game) return;
-        this.game.updateDrag(e.getUILocation());
+        if (!this.game) return;
+
+        // 计算移动距离
+        const currentLoc = e.getUILocation();
+        const moveDistance = Vec3.distance(
+            new Vec3(currentLoc.x, currentLoc.y),
+            this.touchStartPos
+        );
+
+        // 移动超过阈值，判定为拖拽
+        if (moveDistance > CardDrag.CLICK_MOVE_THRESHOLD) {
+            this.dragging = true;
+            if (!this.hasStartedDrag) {
+                this.game.startDrag(this.node, this.offset);
+                this.hasStartedDrag = true;
+            }
+            this.game.updateDrag(e.getUILocation());
+        }
     }
 
     onTouchEnd(e?: EventTouch) {
-        if (!this.dragging || !this.game) return;
-        this.dragging = false;
+        if (!this.game || !e) {
+            this.resetState();
+            return;
+        }
 
-        // 让 UIPlay 处理拖拽结束
-        this.game.endDrag();
+        const touchEndTime = Date.now();
+        const touchDuration = touchEndTime - this.lastClick;
+        const currentLoc = e.getUILocation();
+        const moveDistance = Vec3.distance(
+            new Vec3(currentLoc.x, currentLoc.y),
+            this.touchStartPos
+        );
+
+        // 判定单点点击
+        if (!this.dragging &&
+            moveDistance <= CardDrag.CLICK_MOVE_THRESHOLD &&
+            touchDuration <= CardDrag.CLICK_MAX_DURATION) {
+            this.game.onClickCard(this.node);
+        } else if (this.dragging && this.hasStartedDrag) {
+            this.game.endDrag();
+        }
+
+        this.resetState();
+    }
+
+    private resetState() {
+        this.dragging = false;
+        this.hasStartedDrag = false;
+        this.touchStartPos.set(0, 0);
     }
 }
