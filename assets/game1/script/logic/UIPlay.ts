@@ -108,8 +108,6 @@ export class UIPlay extends VMParentView {
         // 动画
         this.winAnimation = new WinAnimation();
         this.winAnimation.init(this);
-
-        this.onScreenResize();
     }
 
     /** 重新开始 */
@@ -162,6 +160,7 @@ export class UIPlay extends VMParentView {
         for (const fd of this.foundation) {
             if (this.canPlaceToFoundation(card, fd)) {
                 this.startDrag(node, offset);
+                logger.logView(`onDBClickCard fromPile: ${fromPile.node.name} fd: ${fd.node.name}`);
                 this.moveStack(fromPile, this.dragCopies, fd);
                 this.addScore(10);
                 return;
@@ -170,23 +169,22 @@ export class UIPlay extends VMParentView {
     }
 
     /** 单击 */
-    onClickCard(node: Node, offset: Vec3) {
-        const card = node.getComponent(Card);
-        if (node.parent === this.stock.node) {
+    onClickCard(cardNode: Node, offset: Vec3) {
+        const card = cardNode.getComponent(Card);
+        if (cardNode.parent === this.stock.node) {
             const last = this.stock.getTopCard();
             if (!last) {
                 return;
             }
             const cardComp = last.getComponent(Card)!;
+            this.waste.addCard(cardNode);
             cardComp.flipFaceUp();
-            last.setParent(this.waste.node);
-            last.setPosition(0, 0);
             return;
         } else {
-            const fromPile = node.parent.getComponent(Pile);
+            const fromPile = cardNode.parent.getComponent(Pile);
             for (const pile of this.tableau) {
                 if (this.canPlaceToTableau(card, pile)) {
-                    this.startDrag(node, offset);
+                    this.startDrag(cardNode, offset);
                     this.moveStack(fromPile, this.dragCopies, pile);
                     return;
                 }
@@ -206,7 +204,7 @@ export class UIPlay extends VMParentView {
             copy.parent = this.dragNode;
             const worldPos = node.getWorldPosition();
             copy.setWorldPosition(worldPos);
-            node.getComponent(UIOpacity).opacity = 0;
+            node.getComponent(Card)!.hide();
             this.dragCopies.push(copy);
 
             const card1 = node.getComponent(Card);
@@ -352,14 +350,9 @@ export class UIPlay extends VMParentView {
             this.tryFlipLastCard(fromPile.node);
             this.selectedStack.forEach((node, i) => {
                 targetPile.addCard(node);
-                if (targetPile.isTableau) {
-                    const y = targetPile.computeTableauCardY(node);
-                    node.setPosition(0, y);
-                } else {
-                    node.setPosition(0, 0);
-                }
                 node.getComponent(Card).show();
                 this.tryFlipLastCard(fromPile.node);
+                logger.logView(`moveDone fromPile: ${fromPile.name} targetPile: ${targetPile.name}`);
             })
             this.addMoves(1);
             /*
@@ -431,8 +424,7 @@ export class UIPlay extends VMParentView {
 
         // 将牌从目标位置移回原位置
         cards.forEach((cardNode, index) => {
-            cardNode.parent = from.node;
-            cardNode.setPosition(oldPositions[index]);
+            from.addCard(cardNode);
         });
 
         // 重新排列原pile中的牌的位置
@@ -603,9 +595,9 @@ export class UIPlay extends VMParentView {
 
     recycleWasteToStock() {
         const cards = [...this.waste.node.children].reverse();
-        for (const c of cards) {
-            c.setParent(this.stock.node);
-            c.getComponent(Card)!.flipFaceDown();
+        for (const card of cards) {
+            this.stock.addCard(card);
+            card.getComponent(Card)!.flipFaceDown();
         }
     }
 }

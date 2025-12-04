@@ -1,4 +1,4 @@
-import {_decorator, Component, Node, Sprite, SpriteFrame, tween, Vec3, UIOpacity} from 'cc';
+import {_decorator, Component, Node, Sprite, SpriteFrame, tween, Vec3, UIOpacity, UITransform} from 'cc';
 import _ from 'lodash-es';
 import {bundleName} from "db://assets/game1/script/YY";
 import {ResUtil} from "db://assets/libs/res/ResUtil";
@@ -18,6 +18,7 @@ export class Card extends Component {
     @property(Sprite) suitSprite: Sprite = null!;
     @property(Sprite) suitBackSprite: Sprite = null!;
     @property(Sprite) rankSprite: Sprite = null!;
+    @property(Sprite) holdSprite: Sprite = null!;
 
     @property({ tooltip: "花色" }) suit: string;
     @property({ tooltip: "点数" }) rank: number;
@@ -25,7 +26,7 @@ export class Card extends Component {
     @property({ tooltip: "是否正面朝上" }) isFaceUp = false;
 
     detail() {
-        return `key: ${this.key} suit: ${this.suit} rank: ${this.rank} isFaceUp: ${this.isFaceUp}`;
+        return `key: ${this.key} suit: ${this.suit} v: ${this.rankToKey()} isFaceUp: ${this.isFaceUp}`;
     }
 
     init(suit: string, rank: number, key?: string) {
@@ -35,9 +36,9 @@ export class Card extends Component {
         if(!this.key) {
             this.key = (_.findIndex(suits, suit)*13 + rank).toString();
         }
-        logger.logView(`init: ${this.key}, ${this.suit}, ${this.rankToKey()}`);
-        this.node.setScale(0.66, 0.66, 1);   // 整体缩放 Card 大小
+        logger.logView(`init suit: ${this.suit} v: ${this.rankToKey()}`);
         this.loadSprites();
+        this.holdSprite.enabled = false;
     }
 
     getColor(): string {
@@ -104,7 +105,7 @@ export class Card extends Component {
     simpleShake() {
         const originalPos = this.node.position.clone();
         tween(this.node)
-            .repeat(3,
+            .repeat(2,
                 tween()
                     .to(0.06, { position: new Vec3(originalPos.x + 4, originalPos.y, originalPos.z) })
                     .to(0.06, { position: new Vec3(originalPos.x - 4, originalPos.y, originalPos.z) })
@@ -114,14 +115,12 @@ export class Card extends Component {
     }
 
     hide() {
-        this.node.getComponent(UIOpacity).opacity = 0;
+        this.node.getComponent(UIOpacity).opacity = 120;
+        this.holdSprite.enabled = true;
     }
 
     show() {
         this.node.getComponent(UIOpacity).opacity = 255;
-    }
-
-    isHide() {
-        return this.node.getComponent(UIOpacity).opacity === 0
+        this.holdSprite.enabled = false;
     }
 }
