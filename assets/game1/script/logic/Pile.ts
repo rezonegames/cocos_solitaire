@@ -1,7 +1,7 @@
-import {_decorator, Node, Component, UIOpacity} from 'cc';
-import _ from 'lodash-es'
+import {_decorator, Node, Component, EventTouch} from 'cc';
 import {Card} from './Card'
 import {logger} from "db://assets/libs/log/Logger";
+import {UIPlay} from "db://assets/game1/script/logic/UIPlay";
 
 const {ccclass} = _decorator;
 
@@ -12,6 +12,20 @@ export class Pile extends Component {
     isTableau = false;
     isStock = false;
     isWaste = false;
+
+    onLoad() {
+        this.node.on(Node.EventType.TOUCH_END, this.onClick, this);
+    }
+
+    // 点击事件处理函数
+    private onClick(event: EventTouch) {
+        const length = this.node.children.length
+        logger.logView(`点击了堆：${this.node.name}，堆内卡牌数：${length}`);
+        if (this.isStock && length <= 0) {
+            const game = this.node.scene.getComponentInChildren(UIPlay);
+            game.recycleWasteToStock();
+        }
+    }
 
     getTopCard(): Node | null {
         const c = this.node.children;

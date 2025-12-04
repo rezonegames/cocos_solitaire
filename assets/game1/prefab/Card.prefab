@@ -1095,6 +1095,7 @@
     "rankSprite": {
       "__id__": 25
     },
+    "isFaceUp": false,
     "_id": ""
   },
   {
@@ -1113,6 +1114,7 @@
     "__prefab": {
       "__id__": 49
     },
+    "game": null,
     "_id": ""
   },
   {

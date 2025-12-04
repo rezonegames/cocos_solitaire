@@ -54,12 +54,8 @@ export class UIPlay extends VMParentView {
 
     start() {
         this.initGame();
-
         const canvas = director.getScene()!.getComponent(Canvas);
         canvas.node.on('size-changed', this.onScreenResize, this);
-
-        // 点击 waste 区域回收
-        this.waste.node.on(Node.EventType.TOUCH_END, this.tryRecycleWasteToStock, this);
     }
 
     /** 初始化游戏 */
@@ -597,26 +593,12 @@ export class UIPlay extends VMParentView {
         this.tryShuffleAndRetry();
     }
 
-    onWasteToStock() {
-        this.tryRecycleWasteToStock()
-    }
-
     onGameWin() {
         this.winAnimation.play();
     }
 
     onAnimationComplete() {
 
-    }
-
-    tryRecycleWasteToStock() {
-        const topCard = this.waste.getTopCard();
-        if (topCard?.getComponent(Card).rank === 1) {
-            return;
-        }
-        if (this.stock.isEmpty()) {
-            this.recycleWasteToStock();
-        }
     }
 
     recycleWasteToStock() {
