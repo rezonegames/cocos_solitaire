@@ -1,4 +1,4 @@
-import {_decorator, Component, Node, Sprite, SpriteFrame, tween, Vec3} from 'cc';
+import {_decorator, Component, Node, Sprite, SpriteFrame, tween, Vec3, UIOpacity} from 'cc';
 import _ from 'lodash-es';
 import {bundleName} from "db://assets/game1/script/YY";
 import {ResUtil} from "db://assets/libs/res/ResUtil";
@@ -19,10 +19,10 @@ export class Card extends Component {
     @property(Sprite) suitBackSprite: Sprite = null!;
     @property(Sprite) rankSprite: Sprite = null!;
 
-    suit: string;
-    rank: number;
-    key: string;
-    isFaceUp = false;
+    @property({ tooltip: "花色" }) suit: string;
+    @property({ tooltip: "点数" }) rank: number;
+    @property({ tooltip: "1～52对应的数字" }) key: string;
+    @property({ tooltip: "是否正面朝上" }) isFaceUp = false;
 
     detail() {
         return `key: ${this.key} suit: ${this.suit} rank: ${this.rank} isFaceUp: ${this.isFaceUp}`;
@@ -35,7 +35,7 @@ export class Card extends Component {
         if(!this.key) {
             this.key = (_.findIndex(suits, suit)*13 + rank).toString();
         }
-        logger.logView(`init: ${this.key}, ${this.suit}, ${this.rank}`);
+        logger.logView(`init: ${this.key}, ${this.suit}, ${this.rankToKey()}`);
         this.node.setScale(0.66, 0.66, 1);   // 整体缩放 Card 大小
         this.loadSprites();
     }
@@ -67,7 +67,8 @@ export class Card extends Component {
         });
     }
 
-    rankToKey(r: number) {
+    rankToKey() {
+        const r = this.rank;
         return r === 1 ? "A" :
             r === 11 ? "J" :
                 r === 12 ? "Q" :
@@ -98,5 +99,29 @@ export class Card extends Component {
             })
             .to(0.1, {scale: new Vec3(1, 1, 1)})
             .start();
+    }
+
+    simpleShake() {
+        const originalPos = this.node.position.clone();
+        tween(this.node)
+            .repeat(3,
+                tween()
+                    .to(0.06, { position: new Vec3(originalPos.x + 4, originalPos.y, originalPos.z) })
+                    .to(0.06, { position: new Vec3(originalPos.x - 4, originalPos.y, originalPos.z) })
+            )
+            .to(0.06, { position: originalPos })
+            .start();
+    }
+
+    hide() {
+        this.node.getComponent(UIOpacity).opacity = 0;
+    }
+
+    show() {
+        this.node.getComponent(UIOpacity).opacity = 255;
+    }
+
+    isHide() {
+        return this.node.getComponent(UIOpacity).opacity === 0
     }
 }

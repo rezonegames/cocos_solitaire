@@ -15,6 +15,7 @@ const {ccclass, property} = _decorator;
 export class UIPlay extends VMParentView {
     protected data = {
         score: 0,
+        scoreDetail:{},
         lastTotalTime: 0,
         totalTime: 0,
         totalTimeString: '00:00',
@@ -29,11 +30,6 @@ export class UIPlay extends VMParentView {
     @property(Node) wasteRoot: Node = null!;
     @property([Node]) foundationRoots: Node[] = [];
 
-    @property
-    tableauOffset = 38;
-
-    @property
-    maxTableauVisibleHeight = 600;
 
     // runtime piles
     tableau: Pile[] = [];
@@ -164,17 +160,42 @@ export class UIPlay extends VMParentView {
     }
 
     /** 双击 */
-    onDBClickCard(node: Node) {
-
+    onDBClickCard(node: Node, offset: Vec3): void {
+        const card = node.getComponent(Card);
+        const fromPile = node.parent.getComponent(Pile);
+        for (const fd of this.foundation) {
+            if (this.canPlaceToFoundation(card, fd)) {
+                this.startDrag(node, offset);
+                this.moveStack(fromPile, this.dragCopies, fd);
+                this.addScore(10);
+                return;
+            }
+        }
     }
 
     /** 单击 */
-    onClickCard(node: Node) {
+    onClickCard(node: Node, offset: Vec3) {
+        const card = node.getComponent(Card);
         if (node.parent === this.stock.node) {
-            this.onClickStock();
+            const last = this.stock.getTopCard();
+            if (!last) {
+                return;
+            }
+            const cardComp = last.getComponent(Card)!;
+            cardComp.flipFaceUp();
+            last.setParent(this.waste.node);
+            last.setPosition(0, 0);
             return;
         } else {
-
+            const fromPile = node.parent.getComponent(Pile);
+            for (const pile of this.tableau) {
+                if (this.canPlaceToTableau(card, pile)) {
+                    this.startDrag(node, offset);
+                    this.moveStack(fromPile, this.dragCopies, pile);
+                    return;
+                }
+            }
+            card.simpleShake();
         }
     }
 
@@ -191,6 +212,10 @@ export class UIPlay extends VMParentView {
             copy.setWorldPosition(worldPos);
             node.getComponent(UIOpacity).opacity = 0;
             this.dragCopies.push(copy);
+
+            const card1 = node.getComponent(Card);
+            const card2 = copy.getComponent(Card);
+            logger.logView(`startDrag card1: ${card1.detail()} card2: ${card2.detail()}`);
         });
     }
 
@@ -202,7 +227,7 @@ export class UIPlay extends VMParentView {
         const targetPos = pos.subtract(this.dragOffset);
 
         this.dragCopies.forEach((copy, i) => {
-            copy.setPosition(targetPos.x, targetPos.y - i * this.tableauOffset, 0);
+            copy.setPosition(targetPos.x, targetPos.y - i * Pile.tableauFaceUpOffset, 0);
         });
     }
 
@@ -215,17 +240,11 @@ export class UIPlay extends VMParentView {
     getStackFrom(cardNode: Node): Node[] {
         const parent = cardNode.parent!;
         const parentPile = parent.getComponent(Pile);
-
-        // waste 只能取顶牌（一张）
-        if (parentPile && (parentPile as any).isWaste) {
-            const topCard = parentPile.getTopCard();
-            return topCard === cardNode ? [cardNode] : [];
+        if(!parentPile) {
+            logger.trace(`getStackFrom no parent Pile err: ${parent.name}`);
+            return [];
         }
-
-        // 其他情况按原逻辑处理
-        const children = parent.children;
-        const idx = children.indexOf(cardNode);
-        return children.slice(idx);
+        return parentPile.getStackFrom(cardNode);
     }
 
     /** 判断能否放到 tableau */
@@ -235,8 +254,9 @@ export class UIPlay extends VMParentView {
         const lastCard = last.getComponent(Card)!;
         const movingColor = cardComp.getColor();
         const lastColor = lastCard.getColor();
-        logger.logView(`canPlaceToTableau dragCard: ${cardComp.detail()} pileLastCard: ${lastCard.detail()}`);
-        return lastColor !== movingColor && lastCard.rank === cardComp.rank + 1;
+        const v = lastColor !== movingColor && lastCard.rank === cardComp.rank + 1
+        if (v) logger.logView(`canPlaceToTableau dragCard: ${cardComp.detail()} pileLastCard: ${lastCard.detail()} v: ${v}`);
+        return v;
     }
 
     /** 判断能否放到 foundation */
@@ -291,39 +311,35 @@ export class UIPlay extends VMParentView {
 
     /** 移动 stack 到目标 pile，如果fromPile==targetPile，说明回到原点了 */
     moveStack(fromPile: Pile, stack: Node[], targetPile: Pile) {
-        const isTableau = targetPile.isTableau;
-        const existing = targetPile.node.children.length;
-        const offset = isTableau ? this.computeTableauOffsetForPile(existing + stack.length) : 0;
-        const baseLocalY = isTableau ? -existing * offset : 0;
-        const targetBaseWorld = targetPile.node.getWorldPosition().clone().add(new Vec3(0, baseLocalY, 0));
-
-        const oldPositions = stack.map(n => n.position.clone());
-        const total = stack.length;
-
-        const newPositions = stack.map((_, i) => isTableau ? new Vec3(0, baseLocalY - i * offset) : new Vec3(0, 0));
-
-        if(fromPile !== targetPile) {
-            this.undoManager.pushMove({
-                cards: [...stack],
-                from: fromPile,
-                to: targetPile,
-                oldPositions,
-                newPositions,
-            } as any);
+        let baseLocalY = 0;
+        if(targetPile.isTableau) {
+            /**
+             * 这部分比较绕，如果返回原处，直接设置为第一个选中的节点，为初始baseY。
+             * 如果到目标节点，初始位置应该+1个tableauFaceUpOffset
+             */
+            if(fromPile !== targetPile) {
+                const topCard = targetPile.getTopCard();
+                if(!!topCard) {
+                    baseLocalY = targetPile.computeTableauCardY(topCard);
+                    baseLocalY -= Pile.tableauFaceUpOffset;
+                }
+            } else {
+                baseLocalY = targetPile.computeTableauCardY(this.selectedStack[0]);
+            }
         }
-
+        const targetBaseWorld = targetPile.node.getWorldPosition().clone().add(new Vec3(0, baseLocalY, 0));
+        const total = stack.length;
         stack.forEach((node, i) => {
-            const worldTarget = targetBaseWorld.clone().add(new Vec3(0, isTableau ? -i * offset : 0, 0));
+            const worldTarget = targetBaseWorld.clone().add(new Vec3(0, targetPile.isTableau ?
+                -Pile.tableauFaceUpOffset * i : 0, 0));
             tween(node)
                 .to(0.2, {worldPosition: worldTarget})
                 .call(() => {
-                    // todo：移动到相应的位置
-                    node.getComponent(UIOpacity).opacity = 0;
+                    node.getComponent(Card).hide();
                     // 全部隐藏
                     if (i === total - 1) {
                         this.moveDone(fromPile, targetPile);
                     }
-                    this.addMoves(1);
                 })
                 .start();
         });
@@ -331,39 +347,41 @@ export class UIPlay extends VMParentView {
 
     /** 真正的修改card位置 */
     moveDone(fromPile: Pile, targetPile: Pile) {
-        if(fromPile === targetPile) {
+        if (fromPile === targetPile) {
             // 回到原来的位置！！
             this.selectedStack.forEach((node, i) => {
-                node.getComponent(UIOpacity).opacity = 255;
+                node.getComponent(Card).show();
             })
         } else {
             this.tryFlipLastCard(fromPile.node);
-            const existing = targetPile.node.children.length;
             this.selectedStack.forEach((node, i) => {
-                node.parent = targetPile.node;
-                // 关键修复：设置正确的渲染顺序
-                node.setSiblingIndex(existing + i);
+                targetPile.addCard(node);
                 if (targetPile.isTableau) {
-                    node.setPosition(0, -i * this.tableauOffset);
+                    const y = targetPile.computeTableauCardY(node);
+                    node.setPosition(0, y);
                 } else {
                     node.setPosition(0, 0);
                 }
-                node.getComponent(UIOpacity).opacity = 255;
+                node.getComponent(Card).show();
+                this.tryFlipLastCard(fromPile.node);
             })
+            this.addMoves(1);
+            /*
+            todo:
+            保存undo
+            this.undoManager.pushMove({
+                    cards: [...stack],
+                    from: fromPile,
+                    to: targetPile,
+                    oldPositions,
+                    newPositions,
+                } as any);
+             */
         }
         // 清理副本和选中栈
         this.dragCopies.forEach(copy => copy.destroy());
         this.dragCopies = [];
         this.selectedStack = [];
-    }
-
-    /** 计算 tableau 的 offset */
-    computeTableauOffsetForPile(totalCardsInPile: number): number {
-        const defaultOffset = this.tableauOffset;
-        const maxVisibleHeight = this.maxTableauVisibleHeight;
-        const needed = totalCardsInPile * defaultOffset;
-        if (needed <= maxVisibleHeight) return defaultOffset;
-        return Math.max(8, Math.floor(maxVisibleHeight / Math.max(1, totalCardsInPile)));
     }
 
     /** 翻牌处理 */
@@ -384,9 +402,9 @@ export class UIPlay extends VMParentView {
         for (let col = 0; col < this.tableau.length; col++) {
             const pile = this.tableau[col];
             const children = pile.node.children;
-            const actualOffset = this.computeTableauOffsetForPile(children.length);
             children.forEach((cardNode, i) => {
-                cardNode.setPosition(0, -i * actualOffset);
+                const y = pile.computeTableauCardY(cardNode);
+                cardNode.setPosition(0, y);
             });
         }
 
@@ -441,9 +459,9 @@ export class UIPlay extends VMParentView {
         const children = pile.node.children;
 
         if (isTableau) {
-            const offset = this.computeTableauOffsetForPile(children.length);
             children.forEach((cardNode, index) => {
-                cardNode.setPosition(0, -index * offset, 0);
+                const y = pile.computeTableauCardY(cardNode);
+                cardNode.setPosition(0, y);
             });
         } else {
             // Foundation, Stock, Waste 等都叠在一起
@@ -496,7 +514,7 @@ export class UIPlay extends VMParentView {
         }
 
         // 3. 生成完整的52张牌，排除已使用的牌
-        const availableCards: {suit: string, rank: number }[] = [];
+        const availableCards: { suit: string, rank: number }[] = [];
         for (const suit of suits) {
             for (let rank = 1; rank <= 13; rank++) {
                 const key = `${suit}-${rank}`;
@@ -589,18 +607,6 @@ export class UIPlay extends VMParentView {
 
     onAnimationComplete() {
 
-    }
-
-    /** 点击 stock */
-    onClickStock() {
-        const last = this.stock.getTopCard();
-        if (!last) {
-            return;
-        }
-        const cardComp = last.getComponent(Card)!;
-        cardComp.flipFaceUp();
-        last.setParent(this.waste.node);
-        last.setPosition(0, 0);
     }
 
     tryRecycleWasteToStock() {
