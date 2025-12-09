@@ -142,6 +142,41 @@ export class AutoSolver {
         return true;
     }
 
+    /** 测试提示功能 - 执行所有提示动作 */
+    async test() {
+        logger.logView('=== Test: 开始测试提示功能 ===');
+        const hintList = this.getHint();
+        logger.logView(`找到 ${hintList.length} 个提示`);
+        
+        for (let i = 0; i < hintList.length; i++) {
+            const hint = hintList[i];
+            const card = hint.fromCard.getComponent(Card);
+            logger.logView(`执行提示 ${i + 1}: ${card.detail()} -> ${hint.toPile.node.name}`);
+            await this.executeHint(hint, true); // isTest=true 不保存undo
+            await this.delay(1000);
+        }
+        logger.logView('=== Test: 测试完成 ===');
+    }
+
+    /** 恢复所有牌的show状态 */
+    private restoreAllCardsShowState() {
+        const allPiles = [
+            ...this.playing.tableau,
+            ...this.playing.foundation,
+            this.playing.stock,
+            this.playing.waste
+        ];
+        
+        for (const pile of allPiles) {
+            pile.forEachCard((cardNode) => {
+                const card = cardNode.getComponent(Card);
+                if (!card.isShow()) {
+                    card.show();
+                }
+            });
+        }
+    }
+
     /** 模拟 U3D MgrHint.getHint() → 获取最优提示动作 */
     getHint(): HintAction[] {
         const hintList: HintAction[] = [];
@@ -194,7 +229,7 @@ export class AutoSolver {
     }
 
     /** 执行提示动作 */
-    async executeHint(hint: HintAction): Promise<void> {
+    async executeHint(hint: HintAction, isTest?: boolean): Promise<void> {
         const {fromCard, toPile} = hint;
         const fromPile = fromCard.parent.getComponent(Pile);
         const stack = fromPile.getStackFrom(fromCard);
@@ -204,7 +239,7 @@ export class AutoSolver {
         // 创建拖拽副本并执行移动
         const dragCopies = this.playing.startDrag(fromCard, new Vec3());
         await this.delay(100);
-        this.playing.moveStack(fromPile, dragCopies, toPile);
+        this.playing.moveStack(fromPile, dragCopies, toPile, isTest);
     }
 
     /** 尝试移动 Waste 顶牌 */
@@ -278,11 +313,11 @@ export class AutoSolver {
         let moved = true;
         let loopCount = 0;
         const maxLoops = 100; // 防止无限循环
-        
+
         while (moved && loopCount < maxLoops) {
             moved = false;
             loopCount++;
-            
+
             // 尝试从Waste移动
             const wasteTop = this.playing.waste.getTopCard();
             if (wasteTop && wasteTop.getComponent(Card).isShow()) {
@@ -298,15 +333,15 @@ export class AutoSolver {
                 }
                 if (moved) continue;
             }
-            
+
             // 尝试从Tableau移动
             for (const pile of this.playing.tableau) {
                 const topCard = pile.getTopCard();
                 if (!topCard) continue;
-                
+
                 const card = topCard.getComponent(Card);
                 if (!card.isFaceUp || !card.isShow()) continue;
-                
+
                 for (const fd of this.playing.foundation) {
                     if (this.playing.canPlaceToFoundation(card, fd)) {
                         const dragCopies = this.playing.startDrag(topCard, new Vec3());
@@ -319,7 +354,7 @@ export class AutoSolver {
                 if (moved) break;
             }
         }
-        
+
         if (loopCount >= maxLoops) {
             logger.logView('⚠️ 自动完成超出最大循环次数');
         }
@@ -329,8 +364,8 @@ export class AutoSolver {
     /** 检查是否可以赢（所有打开的牌都checkWin可以移到Foundation） */
     checkWin(): boolean {
         // 收集所有打开的牌
-        const faceUpCards: {card: Card, pile: Pile}[] = [];
-        
+        const faceUpCards: { card: Card, pile: Pile }[] = [];
+
         // Waste中的牌
         const wasteTop = this.playing.waste.getTopCard();
         if (wasteTop) {
@@ -339,7 +374,7 @@ export class AutoSolver {
                 faceUpCards.push({card, pile: this.playing.waste});
             }
         }
-        
+
         // Tableau中的牌
         for (const pile of this.playing.tableau) {
             pile.forEachCard((cardNode) => {
@@ -349,7 +384,7 @@ export class AutoSolver {
                 }
             });
         }
-        
+
         // 模拟移动所有牌到Foundation
         const foundationState = new Map<string, number>();
         for (const fd of this.playing.foundation) {
@@ -367,17 +402,17 @@ export class AutoSolver {
                 }
             }
         }
-        
+
         // 尝试将所有打开的牌按顺序放入Foundation
         let changed = true;
         const movedCards = new Set<Card>();
-        
+
         while (changed && movedCards.size < faceUpCards.length) {
             changed = false;
-            
+
             for (const {card, pile} of faceUpCards) {
                 if (movedCards.has(card)) continue;
-                
+
                 const currentRank = foundationState.get(card.suit) || 0;
                 if (card.rank === currentRank + 1) {
                     foundationState.set(card.suit, card.rank);
@@ -386,10 +421,10 @@ export class AutoSolver {
                 }
             }
         }
-        
+
         // 检查是否所有打开的牌都能移到Foundation
         const canWin = movedCards.size === faceUpCards.length;
-        
+
         if (canWin) {
             logger.logView('🎉 CheckWin: 所有打开的牌都可以移到Foundation，游戏可以获胜！');
         }

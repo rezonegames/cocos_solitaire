@@ -1,4 +1,4 @@
-import {_decorator, Canvas, director, instantiate, Node, Prefab, tween, UIOpacity, UITransform, Vec2, Vec3} from 'cc';
+import {_decorator, Canvas, director, instantiate, Node, Prefab, tween, UIOpacity, UITransform, Vec2, Vec3, Label, Color} from 'cc';
 import _ from 'lodash-es';
 import VMParentView from "db://assets/libs/gui/VMParentView";
 import {CardFactory} from './CardFactory';
@@ -169,7 +169,50 @@ export class UIPlay extends VMParentView {
         if(!this.data.scoreDetail[key]) {
             this.data.scoreDetail[key] = score;
             this.data.score += score;
+            this.showScoreAnimation(card.node, score);
         }
+    }
+
+    /** 显示加分动画 */
+    private showScoreAnimation(cardNode: Node, score: number) {
+        // const {Label, Color} = require('cc');
+        
+        // 创建文本节点
+        const scoreNode = new Node('ScoreText');
+        const label = scoreNode.addComponent(Label);
+        label.string = `+${score}`;
+        label.fontSize = 40;
+        label.color = new Color(255, 215, 0); // 金色
+        
+        // 添加到dragNode（最顶层）
+        scoreNode.setParent(this.dragNode);
+        
+        // 设置初始位置（牌的中心）
+        const worldPos = cardNode.getWorldPosition();
+        scoreNode.setWorldPosition(worldPos);
+        
+        // 设置透明度
+        const opacity = scoreNode.addComponent(UIOpacity);
+        opacity.opacity = 0;
+        
+        // 动画：向上飞 + 淡入淡出
+        tween(scoreNode)
+            .parallel(
+                tween().to(0.3, {position: new Vec3(0, 100, 0)}, {easing: 'sineOut'}),
+                tween().to(0.15, {}, {onUpdate: () => {
+                    opacity.opacity = Math.min(255, opacity.opacity + 17);
+                }})
+            )
+            .delay(0.2)
+            .to(0.3, {}, {
+                onUpdate: () => {
+                    opacity.opacity = Math.max(0, opacity.opacity - 17);
+                }
+            })
+            .call(() => {
+                scoreNode.destroy();
+            })
+            .start();
     }
 
     /** 移动的步数 */
@@ -179,20 +222,6 @@ export class UIPlay extends VMParentView {
 
     /** 双击 */
     onDBClickCard(node: Node, offset: Vec3): void {
-        // const card = node.getComponent(Card);
-        // const fromPile = node.parent.getComponent(Pile);
-        // if (fromPile.isWaste) {
-        //     return;
-        // }
-        // for (const fd of this.foundation) {
-        //     if (this.canPlaceToFoundation(card, fd)) {
-        //         this.startDrag(node, offset);
-        //         logger.logView(`onDBClickCard fromPile: ${fromPile.node.name} fd: ${fd.node.name}`);
-        //         this.moveStack(fromPile, this.dragCopies, fd);
-        //         this.addScore(10);
-        //         return;
-        //     }
-        // }
     }
 
     /** 单击 */
@@ -222,7 +251,6 @@ export class UIPlay extends VMParentView {
                 if (this.canPlaceToFoundation(card, fd)) {
                     this.startDrag(cardNode, offset);
                     this.moveStack(fromPile, this.dragCopies, fd);
-                    this.addScore(card, 10);
                     return;
                 }
             }
@@ -326,7 +354,6 @@ export class UIPlay extends VMParentView {
         for (const fd of this.foundation) {
             if (this.isNearNode(fd.node, topCard) && this.canPlaceToFoundation(topCardComp, fd)) {
                 this.moveStack(fromPile, this.dragCopies, fd);
-                this.addScore(topCardComp, 10);
                 return;
             }
         }
@@ -422,11 +449,19 @@ export class UIPlay extends VMParentView {
                 });
 
                 this.addMoves(1);
+                if(targetPile.isFoundation) {
+                    this.addScore(this.selectedStack[0].getComponent(Card), 10);
+                }
                 this.autoSolver.checkLose();
                 if (this.autoSolver.checkWin()) {
                     this.autoSolver.autoComplete()
                 }
             }
+        }
+        else {
+            this.selectedStack.forEach((node, i) => {
+                node.getComponent(Card).show();
+            })
         }
 
         // 清理副本和选中栈
@@ -661,8 +696,8 @@ export class UIPlay extends VMParentView {
 
     }
 
-    onHint() {
-
+    async onHint() {
+        await this.autoSolver.test();
     }
 
     onDeal(type: string) {
