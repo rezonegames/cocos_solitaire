@@ -1,9 +1,10 @@
-import {_decorator, Node} from 'cc';
+import {_decorator, Node, Vec3} from 'cc';
 import {UIPlay} from './UIPlay';
 import {Card} from './Card';
 import {Pile} from './Pile';
 import {suits} from "./Card";
 import _ from 'lodash-es';
+import {logger} from "db://assets/libs/log/Logger";
 
 const {ccclass} = _decorator;
 
@@ -13,44 +14,20 @@ interface HintAction {
     toPile: Pile; // 目标堆
 }
 
-// 模拟 U3D 中的管理器（映射到 Cocos 的 UIPlay 实例）
-interface MgrHolderMapping {
-    holderHelpClose: Pile; // 未抽取的帮助堆（对应 Cocos 的 Stock）
-    holderHelpOpen: Pile;  // 已抽取的帮助堆（对应 Cocos 的 Waste）
-    holderResult: Pile[];  // 目标堆（对应 Cocos 的 Foundation）
-    holderPlay: Pile[];    // 游戏堆（对应 Cocos 的 Tableau）
-}
-
 @ccclass('AutoSolver')
 export class AutoSolver {
-    private playing: UIPlay = null!;
-    private running = false;
-    private isCurGameOneCard = true; // 是否单次抽1张牌（可配置，对应 U3D 的 isCurGameOneCard）
-    private needCheckLose = true;    // 是否需要检测失败（对应 U3D 的 needCheckLose）
-    private actionDelay = 800;       // 动作执行延迟（ms）
-    private flipBeforeMoveDelay = 500;// 翻牌后延迟
-    private loseTimes = 0;           // 失败次数（对应 U3D 的 loseTimes）
-
-    // 映射 U3D 的管理器到 Cocos 的堆结构
-    private mgrMapping: MgrHolderMapping = {
-        holderHelpClose: null!,
-        holderHelpOpen: null!,
-        holderResult: [],
-        holderPlay: []
-    };
+    playing: UIPlay = null!;
+    running = false;
+    isCurGameOneCard = true; // 是否单次抽1张牌（可配置，对应 U3D 的 isCurGameOneCard）
+    needCheckLose = true;    // 是否需要检测失败（对应 U3D 的 needCheckLose）
+    actionDelay = 800;       // 动作执行延迟（ms）
+    flipBeforeMoveDelay = 500;// 翻牌后延迟
+    loseTimes = 0;           // 失败次数（对应 U3D 的 loseTimes）
 
     /** 初始化（关联游戏实例+映射 U3D 结构） */
     init(game: UIPlay, isCurGameOneCard: boolean = true) {
         this.playing = game;
         this.isCurGameOneCard = isCurGameOneCard;
-
-        // 核心映射：U3D 堆 → Cocos 堆
-        this.mgrMapping = {
-            holderHelpClose: game.stock,       // U3D holderHelpClose = Cocos Stock（未抽牌堆）
-            holderHelpOpen: game.waste,        // U3D holderHelpOpen = Cocos Waste（已抽牌堆）
-            holderResult: game.foundation,     // U3D holderResult = Cocos Foundation（目标堆）
-            holderPlay: game.tableau           // U3D holderPlay = Cocos Tableau（游戏堆）
-        };
     }
 
     /** 是否正在自动求解 */
@@ -63,51 +40,58 @@ export class AutoSolver {
         if (this.running) return;
         this.running = true;
         this.loseTimes = 0;
-        console.log('AutoSolver: 开始自动求解（适配 U3D 逻辑）');
+        logger.logView('AutoSolver: 开始自动求解（适配 U3D 逻辑）');
 
         while (this.running) {
-            // 检测失败/胜利，终止流程（完全复用 U3D checkLose 逻辑）
-            if (this.checkLose() || this.isGameWin()) {
-                const log = this.checkLose()
-                    ? `AutoSolver: 牌局失败（次数：${this.loseTimes}），停止求解`
-                    : 'AutoSolver: 游戏胜利！停止求解';
-                console.log(log);
+            // 检测失败/胜利，终止流程
+            if (this.isGameWin()) {
+                logger.logView('AutoSolver: 游戏胜利！停止求解');
+                this.playing.onGameWin();
                 this.running = false;
                 break;
             }
 
-            // 优先级1：执行提示动作（模拟 U3D 的 MgrHint.getHint()）
-            if (this.tryExecuteHintAction()) {
+            if (this.checkLose()) {
+                logger.logView(`AutoSolver: 牌局失败（次数：${this.loseTimes}），停止求解`);
+                this.running = false;
+                break;
+            }
+
+            // 优先级1：执行提示动作
+            const hints = this.getHint();
+            if (hints.length > 0) {
+                const hint = hints[0];
+                await this.executeHint(hint);
                 await this.delay(this.actionDelay);
                 continue;
             }
 
-            // 优先级2：移动帮助堆（Waste）的牌到目标堆/游戏堆（对应 U3D 处理 holderHelpOpen）
-            if (await this.tryMoveHelpCardToValidPile()) {
+            // 优先级2：移动帮助堆（Waste）的牌到目标堆/游戏堆
+            if (await this.tryMoveWasteCard()) {
                 await this.delay(this.actionDelay);
                 continue;
             }
 
-            // 优先级3：解锁游戏堆（Tableau）的扣牌（对应 U3D 解锁 holderPlay 的扣牌）
-            if (this.tryFlipTableauFaceDownCard()) {
+            // 优先级3：解锁游戏堆（Tableau）的扣牌
+            if (await this.tryFlipTableauCard()) {
                 await this.delay(this.flipBeforeMoveDelay);
                 continue;
             }
 
-            // 优先级4：抽取帮助堆新牌（Stock → Waste，对应 U3D 抽取 holderHelpClose）
-            if (this.tryDrawNewHelpCard()) {
+            // 优先级4：抽取帮助堆新牌（Stock → Waste）
+            if (await this.tryDrawFromStock()) {
                 await this.delay(this.actionDelay);
                 continue;
             }
 
-            // 优先级5：回收帮助堆（Waste → Stock，对应 U3D 无牌可抽时的逻辑）
-            if (this.tryRecycleHelpOpenToClose()) {
-                await this.delay(1000); // 回收动作延迟稍长
+            // 优先级5：回收帮助堆（Waste → Stock）
+            if (await this.tryRecycleWaste()) {
+                await this.delay(this.actionDelay);
                 continue;
             }
 
             // 无可用动作，停止求解
-            console.log('AutoSolver: 无可用动作，停止求解');
+            logger.logView('AutoSolver: 无可用动作，停止求解');
             this.running = false;
             break;
         }
@@ -116,95 +100,91 @@ export class AutoSolver {
     /** 停止自动求解 */
     stop() {
         this.running = false;
-        console.log('AutoSolver: 停止自动求解');
+        logger.logView('AutoSolver: 停止自动求解');
     }
 
     /** 核心适配：U3D checkLose 逻辑迁移到 Cocos */
-    private checkLose(): boolean {
+    checkLose(): boolean {
         if (!this.needCheckLose) return false;
 
-        // 1. 未抽取的帮助堆（Stock）有牌 → 不失败
-        if (this.mgrMapping.holderHelpClose.node.children.length > 0) return false;
+        // Stock 和 Waste 都为空，且没有可用移动
+        const stockEmpty = this.playing.stock.isEmpty();
+        const wasteEmpty = this.playing.waste.isEmpty();
 
-        // 2. 所有牌都在目标堆 → 不失败（已胜利）
-        const totalResultCards = this.mgrMapping.holderResult.reduce((sum, pile) => sum + pile.node.children.length, 0);
-        if (totalResultCards >= 52) return false;
+        if (!stockEmpty || !wasteEmpty) return false;
 
-        // 3. 检测已抽取的帮助堆（Waste）的牌是否能移动
-        const helpOpenCards = this.mgrMapping.holderHelpOpen.node.children;
-        if (helpOpenCards.length > 0) {
-            const listToCheck = [...this.mgrMapping.holderResult, ...this.mgrMapping.holderPlay];
-            let ind = -1;
+        // 检查是否有任何可用的移动
+        const hints = this.getHint();
+        if (hints.length > 0) return false;
 
-            do {
-                ind += this.isCurGameOneCard ? 1 : 3;
-                if (ind < 0) continue;
-                if (ind >= helpOpenCards.length) ind = helpOpenCards.length - 1;
-
-                const cardNode = helpOpenCards[ind];
-                const card = cardNode.getComponent(Card)!;
-
-                // 只要有一张牌能移动 → 不失败
-                for (const pile of listToCheck) {
-                    if (this.canMoveToPile(card, pile)) {
-                        return false;
-                    }
-                }
-            } while (ind < helpOpenCards.length - 1);
+        // 检查 Tableau 中是否还有扣着的牌
+        for (const pile of this.playing.tableau) {
+            const cards = pile.getAllCards();
+            for (const cardNode of cards) {
+                const card = cardNode.getComponent(Card);
+                if (!card.isFaceUp) return false;
+            }
         }
 
-        // 4. 检测是否有提示动作 → 有则不失败
-        const hintList = this.getHint();
-        if (hintList.length > 0) return false;
-
-        // 5. 满足所有失败条件 → 失败次数+1
         this.loseTimes++;
         return true;
     }
 
     /** 检测游戏胜利（所有牌在目标堆） */
-    private isGameWin(): boolean {
-        const totalResultCards = this.mgrMapping.holderResult.reduce((sum, pile) => sum + pile.node.children.length, 0);
-        return totalResultCards >= 52;
+    isGameWin(): boolean {
+        // 检查每个 Foundation 堆是否都有 13 张牌（K）
+        for (const pile of this.playing.foundation) {
+            const topCard = pile.getTopCard();
+            if (!topCard) return false;
+            const card = topCard.getComponent(Card);
+            if (card.rank !== 13) return false;
+        }
+        return true;
     }
 
     /** 模拟 U3D MgrHint.getHint() → 获取最优提示动作 */
-    private getHint(): HintAction[] {
+    getHint(): HintAction[] {
         const hintList: HintAction[] = [];
 
         // 1. 优先检测帮助堆（Waste）的牌可移动目标
-        const helpOpenCards = this.mgrMapping.holderHelpOpen.node.children;
-        for (const cardNode of helpOpenCards) {
-            const card = cardNode.getComponent(Card)!;
-            // 检测目标堆
-            for (const resultPile of this.mgrMapping.holderResult) {
-                if (this.canMoveToPile(card, resultPile)) {
-                    hintList.push({fromCard: cardNode, toPile: resultPile});
-                    return hintList; // 直接返回第一个最优提示
+        const wasteTop = this.playing.waste.getTopCard();
+        if (wasteTop) {
+            const card = wasteTop.getComponent(Card);
+            // 优先尝试移到 Foundation
+            for (const fd of this.playing.foundation) {
+                if (this.playing.canPlaceToFoundation(card, fd)) {
+                    hintList.push({fromCard: wasteTop, toPile: fd});
+                    return hintList; // Foundation 优先级最高
                 }
             }
-            // 检测游戏堆
-            for (const playPile of this.mgrMapping.holderPlay) {
-                if (this.canMoveToPile(card, playPile)) {
-                    hintList.push({fromCard: cardNode, toPile: playPile});
-                    return hintList;
+            // 尝试移到 Tableau
+            for (const pile of this.playing.tableau) {
+                if (this.playing.canPlaceToTableau(card, pile)) {
+                    hintList.push({fromCard: wasteTop, toPile: pile});
                 }
             }
         }
 
         // 2. 检测游戏堆（Tableau）的牌可移动目标
-        for (const playPile of this.mgrMapping.holderPlay) {
-            const cards = playPile.node.children;
-            for (let i = cards.length - 1; i >= 0; i--) {
-                const cardNode = cards[i];
-                const card = cardNode.getComponent(Card)!;
+        for (const fromPile of this.playing.tableau) {
+            const cards = fromPile.getVisibleCards();
+            for (const cardNode of cards) {
+                const card = cardNode.getComponent(Card);
                 if (!card.isFaceUp) continue;
 
-                // 检测目标堆
-                for (const resultPile of this.mgrMapping.holderResult) {
-                    if (this.canMoveToPile(card, resultPile)) {
-                        hintList.push({fromCard: cardNode, toPile: resultPile});
-                        return hintList;
+                // 优先尝试移到 Foundation
+                for (const fd of this.playing.foundation) {
+                    if (this.playing.canPlaceToFoundation(card, fd)) {
+                        hintList.push({fromCard: cardNode, toPile: fd});
+                        return hintList; // Foundation 优先级最高
+                    }
+                }
+
+                // 尝试移到其他 Tableau
+                for (const toPile of this.playing.tableau) {
+                    if (fromPile === toPile) continue;
+                    if (this.playing.canPlaceToTableau(card, toPile)) {
+                        hintList.push({fromCard: cardNode, toPile: toPile});
                     }
                 }
             }
@@ -213,148 +193,211 @@ export class AutoSolver {
         return hintList;
     }
 
-    /** 执行提示动作（模拟 U3D 执行 hint 动作） */
-    private tryExecuteHintAction(): boolean {
-        const hintList = this.getHint();
-        if (hintList.length === 0) return false;
+    /** 执行提示动作 */
+    async executeHint(hint: HintAction): Promise<void> {
+        const {fromCard, toPile} = hint;
+        const fromPile = fromCard.parent.getComponent(Pile);
+        const stack = fromPile.getStackFrom(fromCard);
 
-        const {fromCard, toPile} = hintList[0];
-        const card = fromCard.getComponent(Card)!;
+        if (stack.length === 0) return;
 
-        // 确保牌是翻开状态
-        if (!card.isFaceUp) {
-            card.flipFaceUp();
-            this.playing.undoManager.pushMove({
-                cards: [fromCard],
-                from: fromCard.parent.getComponent(Pile)!,
-                to: fromCard.parent.getComponent(Pile)!,
-                oldPositions: [fromCard.position.clone()],
-                newPositions: [fromCard.position.clone()],
-                flip: {card: fromCard, wasFaceUp: false}
-            } as any);
+        // 创建拖拽副本并执行移动
+        const dragCopies = this.playing.startDrag(fromCard, new Vec3());
+        await this.delay(100);
+        this.playing.moveStack(fromPile, dragCopies, toPile);
+    }
+
+    /** 尝试移动 Waste 顶牌 */
+    async tryMoveWasteCard(): Promise<boolean> {
+        const wasteTop = this.playing.waste.getTopCard();
+        if (!wasteTop) return false;
+
+        const card = wasteTop.getComponent(Card);
+
+        // 优先移到 Foundation
+        for (const fd of this.playing.foundation) {
+            if (this.playing.canPlaceToFoundation(card, fd)) {
+                const dragCopies = this.playing.startDrag(wasteTop, new Vec3());
+                this.playing.moveStack(this.playing.waste, dragCopies, fd);
+                return true;
+            }
         }
 
-        // 执行移动（调用 Cocos 原生移动逻辑）
-        if (toPile.isFoundation) {
-            // this.playing.tryAutoToFoundation(fromCard);
-        } else {
-            const cardStack = this.playing.getStackFrom(fromCard);
-            // this.playing.moveStack(fromCard, cardStack, toPile, fromCard.parent);
+        // 尝试移到 Tableau
+        for (const pile of this.playing.tableau) {
+            if (this.playing.canPlaceToTableau(card, pile)) {
+                const dragCopies = this.playing.startDrag(wasteTop, new Vec3());
+                this.playing.moveStack(this.playing.waste, dragCopies, pile);
+                return true;
+            }
         }
 
-        console.log(`AutoSolver: 执行提示动作 - 移动 ${card.suit}${card.rank} 到 ${toPile.node.name}`);
+        return false;
+    }
+
+    /** 尝试翻开 Tableau 中的扣牌 */
+    async tryFlipTableauCard(): Promise<boolean> {
+        for (const pile of this.playing.tableau) {
+            const topCard = pile.getTopCard();
+            if (!topCard) continue;
+
+            const card = topCard.getComponent(Card);
+            if (!card.isFaceUp) {
+                card.flipFaceUp();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 尝试从 Stock 抽牌到 Waste */
+    async tryDrawFromStock(): Promise<boolean> {
+        if (this.playing.stock.isEmpty()) return false;
+
+        const topCard = this.playing.stock.getTopCard();
+        if (!topCard) return false;
+
+        const card = topCard.getComponent(Card);
+        this.playing.waste.addCard(topCard);
+        card.flipFaceUp();
         return true;
     }
 
-    /** 移动帮助堆（Waste）的牌到目标堆/游戏堆（对应 U3D 处理 holderHelpOpen） */
-    private async tryMoveHelpCardToValidPile(): Promise<boolean> {
-        const helpOpenPile = this.mgrMapping.holderHelpOpen;
-        const helpOpenCards = helpOpenPile.node.children;
-        if (helpOpenCards.length === 0) return false;
+    /** 尝试回收 Waste 到 Stock */
+    async tryRecycleWaste(): Promise<boolean> {
+        if (this.playing.waste.isEmpty()) return false;
+        if (!this.playing.stock.isEmpty()) return false;
 
-        // 按 U3D 逻辑的步长遍历（1张/3张）
-        const step = this.isCurGameOneCard ? 1 : 3;
-        for (let i = helpOpenCards.length - 1; i >= 0; i -= step) {
-            const cardNode = helpOpenCards[i];
-            const card = cardNode.getComponent(Card)!;
-
-            // 先尝试移动到目标堆（Foundation）
-            for (const resultPile of this.mgrMapping.holderResult) {
-                if (this.canMoveToPile(card, resultPile)) {
-                    if (!card.isFaceUp) {
-                        card.flipFaceUp();
-                        await this.delay(this.flipBeforeMoveDelay);
-                    }
-                    // this.playing.tryAutoToFoundation(cardNode);
-                    console.log(`AutoSolver: 移动帮助堆牌 ${card.suit}${card.rank} 到目标堆`);
-                    return true;
-                }
-            }
-
-            // 再尝试移动到游戏堆（Tableau）
-            for (const playPile of this.mgrMapping.holderPlay) {
-                if (this.canMoveToPile(card, playPile)) {
-                    if (!card.isFaceUp) {
-                        card.flipFaceUp();
-                        await this.delay(this.flipBeforeMoveDelay);
-                    }
-                    const cardStack = this.playing.getStackFrom(cardNode);
-                    // this.playing.moveStack(cardNode, cardStack, playPile, cardNode.parent);
-                    console.log(`AutoSolver: 移动帮助堆牌 ${card.suit}${card.rank} 到游戏堆`);
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /** 解锁游戏堆（Tableau）的扣牌（翻最后一张扣牌，对应 U3D 解锁 holderPlay） */
-    private tryFlipTableauFaceDownCard(): boolean {
-        for (const playPile of this.mgrMapping.holderPlay) {
-            const cards = playPile.node.children;
-            if (cards.length === 0) continue;
-
-            // 找到最后一张扣牌
-            for (let i = cards.length - 1; i >= 0; i--) {
-                const cardNode = cards[i];
-                const card = cardNode.getComponent(Card)!;
-                if (!card.isFaceUp) {
-                    // 翻牌并记录undo
-                    card.flipFaceUp();
-                    this.playing.undoManager.pushMove({
-                        cards: [cardNode],
-                        from: playPile,
-                        to: playPile,
-                        oldPositions: [cardNode.position.clone()],
-                        newPositions: [cardNode.position.clone()],
-                        flip: {card: cardNode, wasFaceUp: false}
-                    } as any);
-                    console.log(`AutoSolver: 解锁游戏堆扣牌 - ${card.suit}${card.rank}`);
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /** 抽取新牌（Stock → Waste，对应 U3D 抽取 holderHelpClose） */
-    private tryDrawNewHelpCard(): boolean {
-        const helpClosePile = this.mgrMapping.holderHelpClose;
-        if (helpClosePile.node.children.length === 0) return false;
-
-        // 调用 Cocos 原生抽牌逻辑
-        this.playing.onClickStock();
-        console.log('AutoSolver: 抽取新牌（Stock → Waste）');
+        this.playing.recycleWasteToStock();
         return true;
     }
 
-    /** 回收帮助堆（Waste → Stock，对应 U3D 无新牌时的回收逻辑） */
-    private tryRecycleHelpOpenToClose(): boolean {
-        const helpClosePile = this.mgrMapping.holderHelpClose;
-        const helpOpenPile = this.mgrMapping.holderHelpOpen;
-
-        // 未抽取堆为空，且已抽取堆有牌 → 回收
-        if (helpClosePile.node.children.length === 0 && helpOpenPile.node.children.length > 0) {
-            this.playing.recycleWasteToStock();
-            console.log('AutoSolver: 回收帮助堆（Waste → Stock）');
-            return true;
+    /** 自动完成游戏（将所有牌移到Foundation） */
+    async autoComplete(): Promise<void> {
+        logger.logView('🎯 开始自动完成游戏...');
+        let moved = true;
+        let loopCount = 0;
+        const maxLoops = 100; // 防止无限循环
+        
+        while (moved && loopCount < maxLoops) {
+            moved = false;
+            loopCount++;
+            
+            // 尝试从Waste移动
+            const wasteTop = this.playing.waste.getTopCard();
+            if (wasteTop && wasteTop.getComponent(Card).isShow()) {
+                const card = wasteTop.getComponent(Card);
+                for (const fd of this.playing.foundation) {
+                    if (this.playing.canPlaceToFoundation(card, fd)) {
+                        const dragCopies = this.playing.startDrag(wasteTop, new Vec3());
+                        this.playing.moveStack(this.playing.waste, dragCopies, fd);
+                        await this.delay(300); // 等待动画完成
+                        moved = true;
+                        break;
+                    }
+                }
+                if (moved) continue;
+            }
+            
+            // 尝试从Tableau移动
+            for (const pile of this.playing.tableau) {
+                const topCard = pile.getTopCard();
+                if (!topCard) continue;
+                
+                const card = topCard.getComponent(Card);
+                if (!card.isFaceUp || !card.isShow()) continue;
+                
+                for (const fd of this.playing.foundation) {
+                    if (this.playing.canPlaceToFoundation(card, fd)) {
+                        const dragCopies = this.playing.startDrag(topCard, new Vec3());
+                        this.playing.moveStack(pile, dragCopies, fd);
+                        await this.delay(300); // 等待动画完成
+                        moved = true;
+                        break;
+                    }
+                }
+                if (moved) break;
+            }
         }
-        return false;
+        
+        if (loopCount >= maxLoops) {
+            logger.logView('⚠️ 自动完成超出最大循环次数');
+        }
+        logger.logView('✅ 自动完成结束');
     }
 
-    /** 通用判断：牌是否能移动到目标堆（复用 Cocos 原生校验逻辑） */
-    private canMoveToPile(card: Card, targetPile: Pile): boolean {
-        if (targetPile.isFoundation) {
-            return this.playing.canPlaceToFoundation(card, targetPile);
-        } else if ((targetPile as any).isTableau) {
-            return this.playing.canPlaceToTableau(card, targetPile);
+    /** 检查是否可以赢（所有打开的牌都checkWin可以移到Foundation） */
+    checkWin(): boolean {
+        // 收集所有打开的牌
+        const faceUpCards: {card: Card, pile: Pile}[] = [];
+        
+        // Waste中的牌
+        const wasteTop = this.playing.waste.getTopCard();
+        if (wasteTop) {
+            const card = wasteTop.getComponent(Card);
+            if (card.isFaceUp) {
+                faceUpCards.push({card, pile: this.playing.waste});
+            }
         }
-        return false;
+        
+        // Tableau中的牌
+        for (const pile of this.playing.tableau) {
+            pile.forEachCard((cardNode) => {
+                const card = cardNode.getComponent(Card);
+                if (card.isFaceUp) {
+                    faceUpCards.push({card, pile});
+                }
+            });
+        }
+        
+        // 模拟移动所有牌到Foundation
+        const foundationState = new Map<string, number>();
+        for (const fd of this.playing.foundation) {
+            const topCard = fd.getTopCard();
+            if (topCard) {
+                const card = topCard.getComponent(Card);
+                foundationState.set(card.suit, card.rank);
+            } else {
+                // 找到这个foundation对应的花色（通过检查第一张可能放入的牌）
+                for (const {card} of faceUpCards) {
+                    if (card.rank === 1 && !foundationState.has(card.suit)) {
+                        foundationState.set(card.suit, 0);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // 尝试将所有打开的牌按顺序放入Foundation
+        let changed = true;
+        const movedCards = new Set<Card>();
+        
+        while (changed && movedCards.size < faceUpCards.length) {
+            changed = false;
+            
+            for (const {card, pile} of faceUpCards) {
+                if (movedCards.has(card)) continue;
+                
+                const currentRank = foundationState.get(card.suit) || 0;
+                if (card.rank === currentRank + 1) {
+                    foundationState.set(card.suit, card.rank);
+                    movedCards.add(card);
+                    changed = true;
+                }
+            }
+        }
+        
+        // 检查是否所有打开的牌都能移到Foundation
+        const canWin = movedCards.size === faceUpCards.length;
+        
+        if (canWin) {
+            logger.logView('🎉 CheckWin: 所有打开的牌都可以移到Foundation，游戏可以获胜！');
+        }
+        return canWin;
     }
 
     /** 延迟工具函数 */
-    private delay(ms: number): Promise<void> {
+    delay(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }

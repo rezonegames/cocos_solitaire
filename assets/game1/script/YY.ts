@@ -12,11 +12,17 @@ export enum UIID {
     UILogin,
     UISelectGame,
     UIPlay,
+    UIWin,
+    UILevelUp,
+    UILose,
+    UIPause,
 }
 
 // 玩家数据
 export class Player {
     name: string = 'Player';
+    // kind哪个大关
+    kind: string = '1';
     // 等级
     level: number = 0;
     levelString: string = 'LV:0';
@@ -66,7 +72,7 @@ export class GameInstance {
         logger.logConfig(`game1 storage language:${language}`);
         await languageManager.setLanguage('game1', language);
 
-        player.setLevel(100)
+        player.setLevel(10)
         player.setItems({coin: 10009,});
 
         // this.levelString += LanguageLabel.pack({dataId: `ui_level`, params: {level: this.level}});
@@ -77,6 +83,9 @@ export class GameInstance {
             [UIID.UILogin]: {bundle, prefab: 'prefab/Login'},
             [UIID.UISelectGame]: {bundle, prefab: 'prefab/SelectGame'},
             [UIID.UIPlay]: {bundle, prefab: 'prefab/Play'},
+            [UIID.UIPause]: {bundle, prefab: 'prefab/Pause'},
+            [UIID.UIWin]: {bundle, prefab: 'prefab/Win'},
+            [UIID.UILose]: {bundle, prefab: 'prefab/Lose'},
         })
         uiManager.open(UIID.UIBackGround);
         uiManager.open(UIID.UISelectGame);

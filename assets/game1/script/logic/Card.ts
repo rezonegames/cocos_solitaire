@@ -6,8 +6,7 @@ import {logger} from "db://assets/libs/log/Logger";
 
 const {ccclass, property} = _decorator;
 
-// 位置不变，否则key就变了，从小到大 草花，方块，黑桃，红心
-// export const suits = ['mh', 'fk', 'ht', 'hx']
+// 位置不变，否则key就变了，从小到大 方块，草花，黑桃，红心
 export const suits = ['fk', 'mh', 'hx', 'ht']
 
 @ccclass('Card')
@@ -20,29 +19,36 @@ export class Card extends Component {
     @property(Sprite) rankSprite: Sprite = null!;
     @property(Sprite) holdSprite: Sprite = null!;
 
-    @property({ tooltip: "花色" }) suit: string;
-    @property({ tooltip: "点数" }) rank: number;
-    @property({ tooltip: "1～52对应的数字" }) key: string;
-    @property({ tooltip: "是否正面朝上" }) isFaceUp = false;
+    @property({tooltip: "花色"}) suit: string;
+    @property({tooltip: "点数"}) rank: number;
+    @property({tooltip: "1～52对应的数字"}) key: string;
+    @property({tooltip: "是否正面朝上"}) _isFaceUp = false;
+    set isFaceUp(value: boolean) {
+        this._isFaceUp = value;
+    }
+
+    get isFaceUp() {
+        return this._isFaceUp && this.isShow();
+    }
 
     detail() {
-        return `key: ${this.key} suit: ${this.suit} v: ${this.rankToKey()} isFaceUp: ${this.isFaceUp}`;
+        return `suit: ${this.suit} v: ${this.rankToKey()} isFaceUp: ${this.isFaceUp}`;
     }
 
     init(suit: string, rank: number, key?: string) {
         this.suit = suit;
         this.rank = rank;
         this.key = key;
-        if(!this.key) {
-            this.key = (_.findIndex(suits, suit)*13 + rank).toString();
+        if (!this.key) {
+            this.key = (_.findIndex(suits, suit) * 13 + rank).toString();
         }
-        logger.logView(`init suit: ${this.suit} v: ${this.rankToKey()}`);
+        // logger.logView(`init suit: ${this.suit} v: ${this.rankToKey()}`);
         this.loadSprites();
         this.holdSprite.enabled = false;
     }
 
     getColor(): string {
-        return _.includes(['hx', 'fk'], this.suit)?'red':'bla'
+        return _.includes(['hx', 'fk'], this.suit) ? 'red' : 'bla'
     }
 
     async loadSprites() {
@@ -107,10 +113,10 @@ export class Card extends Component {
         tween(this.node)
             .repeat(2,
                 tween()
-                    .to(0.06, { position: new Vec3(originalPos.x + 4, originalPos.y, originalPos.z) })
-                    .to(0.06, { position: new Vec3(originalPos.x - 4, originalPos.y, originalPos.z) })
+                    .to(0.06, {position: new Vec3(originalPos.x + 4, originalPos.y, originalPos.z)})
+                    .to(0.06, {position: new Vec3(originalPos.x - 4, originalPos.y, originalPos.z)})
             )
-            .to(0.06, { position: originalPos })
+            .to(0.06, {position: originalPos})
             .start();
     }
 
@@ -122,5 +128,9 @@ export class Card extends Component {
     show() {
         this.node.getComponent(UIOpacity).opacity = 255;
         this.holdSprite.enabled = false;
+    }
+
+    isShow() {
+        return this.node.getComponent(UIOpacity).opacity === 255;
     }
 }

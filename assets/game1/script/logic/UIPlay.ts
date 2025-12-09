@@ -8,6 +8,9 @@ import {UndoManager} from './UndoManager';
 import {AutoSolver} from "./AutoSolver";
 import {WinAnimation} from "./WinAnimation";
 import {logger} from "db://assets/libs/log/Logger";
+import {Player, UIID} from "db://assets/game1/script/YY";
+import {VM} from "db://assets/libs/modelview/ViewModel";
+import {uiManager, UIManager} from "db://assets/libs/ui/UIManager";
 
 const {ccclass, property} = _decorator;
 
@@ -15,7 +18,7 @@ const {ccclass, property} = _decorator;
 export class UIPlay extends VMParentView {
     protected data = {
         score: 0,
-        scoreDetail:{},
+        scoreDetail: {},
         lastTotalTime: 0,
         totalTime: 0,
         totalTimeString: '00:00',
@@ -52,14 +55,22 @@ export class UIPlay extends VMParentView {
     // 游戏运行状态
     private _isRunning = false;
 
-    start() {
-        this.initGame();
+    // 玩家数据
+    private player = VM.get<Player>('player').$data;
+
+    protected onLoad() {
+        super.onLoad();
         const canvas = director.getScene()!.getComponent(Canvas);
         canvas.node.on('size-changed', this.onScreenResize, this);
     }
 
+    async start() {
+        await this.initGame();
+
+    }
+
     /** 初始化游戏 */
-    initGame() {
+    async initGame() {
         // 初始化 piles 并标注类型
         this.tableau = this.tableauRoots.map(n => {
             const p = n.getComponent(Pile) ?? n.addComponent(Pile);
@@ -81,26 +92,35 @@ export class UIPlay extends VMParentView {
 
         this.undoManager = new UndoManager();
         this.factory = new CardFactory(this.cardPrefab);
-        let deck = this.factory.generateDeck('1', 1);
+        let deck = await this.factory.generateDeck(this.player.kind, this.player.level);
         this.factory.shuffle1(deck, 1);
 
         // 发牌到 tableau
+        // logger.logView('=== 开始发牌到Tableau ===');
         for (let col = 0; col < 7; col++) {
+            // logger.logView(`第${col + 1}列:`);
             for (let j = 0; j <= col; j++) {
                 const card = deck.shift()!;
                 const pile = this.tableau[col];
                 pile.addCard(card);
                 const cardComp = card.getComponent(Card)!;
-                if (j === col) cardComp.flipFaceUp();
+                const faceUp = j === col;
+                if (faceUp) cardComp.flipFaceUp();
                 else cardComp.flipFaceDown();
+                // logger.logView(`  位置${j}: ${cardComp.detail()} ${faceUp ? '(翻开)' : '(扣着)'}`);
             }
         }
+        // logger.logView('=== Tableau发牌完成 ===');
 
         // 剩余牌放 stock
+        // logger.logView(`=== Stock剩余${deck.length}张牌 ===`);
         for (const card of deck) {
             this.stock.addCard(card);
-            card.getComponent(Card)!.flipFaceDown();
+            const cardComp = card.getComponent(Card)!;
+            cardComp.flipFaceDown();
+            // logger.logView(`  ${cardComp.detail()}`);
         }
+        // logger.logView('=== Stock发牌完成 ===');
 
         // 自动完成
         this.autoSolver = new AutoSolver();
@@ -111,7 +131,7 @@ export class UIPlay extends VMParentView {
     }
 
     /** 重新开始 */
-    restartGame() {
+    async restartGame() {
         const allPiles: Pile[] = [
             ...this.tableau,
             ...this.foundation,
@@ -119,14 +139,14 @@ export class UIPlay extends VMParentView {
             this.waste
         ];
 
+        // 收集所有牌并删除
         for (const pile of allPiles) {
-            while (pile.node.children.length > 0) {
-                pile.node.children[0].destroy();
-            }
+            const cards = [...pile.getAllCards()];
+            cards.forEach(card => card.destroy());
         }
 
         this.undoManager.clear?.();
-        this.initGame();
+        await this.initGame();
     }
 
     update(delta: number) {
@@ -144,8 +164,12 @@ export class UIPlay extends VMParentView {
     }
 
     /** 加分 */
-    addScore(score: number = 0) {
-        this.data.score += score;
+    addScore(card: Card, score: number = 0) {
+        const key = card.key;
+        if(!this.data.scoreDetail[key]) {
+            this.data.scoreDetail[key] = score;
+            this.data.score += score;
+        }
     }
 
     /** 移动的步数 */
@@ -155,23 +179,28 @@ export class UIPlay extends VMParentView {
 
     /** 双击 */
     onDBClickCard(node: Node, offset: Vec3): void {
-        const card = node.getComponent(Card);
-        const fromPile = node.parent.getComponent(Pile);
-        for (const fd of this.foundation) {
-            if (this.canPlaceToFoundation(card, fd)) {
-                this.startDrag(node, offset);
-                logger.logView(`onDBClickCard fromPile: ${fromPile.node.name} fd: ${fd.node.name}`);
-                this.moveStack(fromPile, this.dragCopies, fd);
-                this.addScore(10);
-                return;
-            }
-        }
+        // const card = node.getComponent(Card);
+        // const fromPile = node.parent.getComponent(Pile);
+        // if (fromPile.isWaste) {
+        //     return;
+        // }
+        // for (const fd of this.foundation) {
+        //     if (this.canPlaceToFoundation(card, fd)) {
+        //         this.startDrag(node, offset);
+        //         logger.logView(`onDBClickCard fromPile: ${fromPile.node.name} fd: ${fd.node.name}`);
+        //         this.moveStack(fromPile, this.dragCopies, fd);
+        //         this.addScore(10);
+        //         return;
+        //     }
+        // }
     }
 
     /** 单击 */
     onClickCard(cardNode: Node, offset: Vec3) {
         const card = cardNode.getComponent(Card);
-        if (cardNode.parent === this.stock.node) {
+        const pile = cardNode.parent.getComponent(Pile);
+        // 如果点击的是stock的card
+        if (pile === this.stock) {
             const last = this.stock.getTopCard();
             if (!last) {
                 return;
@@ -189,12 +218,20 @@ export class UIPlay extends VMParentView {
                     return;
                 }
             }
+            for (const fd of this.foundation) {
+                if (this.canPlaceToFoundation(card, fd)) {
+                    this.startDrag(cardNode, offset);
+                    this.moveStack(fromPile, this.dragCopies, fd);
+                    this.addScore(card, 10);
+                    return;
+                }
+            }
             card.simpleShake();
         }
     }
 
     // 拖拽相关方法
-    startDrag(cardNode: Node, offset: Vec3) {
+    startDrag(cardNode: Node, offset: Vec3): Node[] {
         this.dragOffset = offset;
         this.selectedStack = this.getStackFrom(cardNode);
         this.dragCopies = [];
@@ -207,10 +244,11 @@ export class UIPlay extends VMParentView {
             node.getComponent(Card)!.hide();
             this.dragCopies.push(copy);
 
-            const card1 = node.getComponent(Card);
-            const card2 = copy.getComponent(Card);
-            logger.logView(`startDrag card1: ${card1.detail()} card2: ${card2.detail()}`);
+            // const card1 = node.getComponent(Card);
+            // const card2 = copy.getComponent(Card);
+            // logger.logView(`startDrag card1: ${card1.detail()} card2: ${card2.detail()}`);
         });
+        return this.dragCopies;
     }
 
     updateDrag(touchLocation: Vec2) {
@@ -234,7 +272,7 @@ export class UIPlay extends VMParentView {
     getStackFrom(cardNode: Node): Node[] {
         const parent = cardNode.parent!;
         const parentPile = parent.getComponent(Pile);
-        if(!parentPile) {
+        if (!parentPile) {
             logger.trace(`getStackFrom no parent Pile err: ${parent.name}`);
             return [];
         }
@@ -249,12 +287,17 @@ export class UIPlay extends VMParentView {
         const movingColor = cardComp.getColor();
         const lastColor = lastCard.getColor();
         const v = lastColor !== movingColor && lastCard.rank === cardComp.rank + 1
-        if (v) logger.logView(`canPlaceToTableau dragCard: ${cardComp.detail()} pileLastCard: ${lastCard.detail()} v: ${v}`);
+        // if (v) logger.logView(`canPlaceToTableau dragCard: ${cardComp.detail()} pileLastCard: ${lastCard.detail()} v: ${v}`);
         return v;
     }
 
     /** 判断能否放到 foundation */
     canPlaceToFoundation(cardComp: Card, pile: Pile) {
+        const cardNode = cardComp.node;
+
+        const cardPile = cardNode.parent.getComponent(Pile);
+        if (!!cardPile && !cardPile.isTopCard(cardNode)) return false;
+
         const last = pile.getTopCard();
         if (!last) return cardComp.rank === 1;
         const lastCard = last.getComponent(Card)!;
@@ -283,7 +326,7 @@ export class UIPlay extends VMParentView {
         for (const fd of this.foundation) {
             if (this.isNearNode(fd.node, topCard) && this.canPlaceToFoundation(topCardComp, fd)) {
                 this.moveStack(fromPile, this.dragCopies, fd);
-                this.addScore(10);
+                this.addScore(topCardComp, 10);
                 return;
             }
         }
@@ -304,16 +347,16 @@ export class UIPlay extends VMParentView {
     }
 
     /** 移动 stack 到目标 pile，如果fromPile==targetPile，说明回到原点了 */
-    moveStack(fromPile: Pile, stack: Node[], targetPile: Pile) {
+    moveStack(fromPile: Pile, stack: Node[], targetPile: Pile, isTest: boolean = false) {
         let baseLocalY = 0;
-        if(targetPile.isTableau) {
+        if (targetPile.isTableau) {
             /**
              * 这部分比较绕，如果返回原处，直接设置为第一个选中的节点，为初始baseY。
              * 如果到目标节点，初始位置应该+1个tableauFaceUpOffset
              */
-            if(fromPile !== targetPile) {
+            if (fromPile !== targetPile) {
                 const topCard = targetPile.getTopCard();
-                if(!!topCard) {
+                if (!!topCard) {
                     baseLocalY = targetPile.computeTableauCardY(topCard);
                     baseLocalY -= Pile.tableauFaceUpOffset;
                 }
@@ -332,7 +375,7 @@ export class UIPlay extends VMParentView {
                     node.getComponent(Card).hide();
                     // 全部隐藏
                     if (i === total - 1) {
-                        this.moveDone(fromPile, targetPile);
+                        this.moveDone(fromPile, targetPile, isTest);
                     }
                 })
                 .start();
@@ -340,33 +383,52 @@ export class UIPlay extends VMParentView {
     }
 
     /** 真正的修改card位置 */
-    moveDone(fromPile: Pile, targetPile: Pile) {
-        if (fromPile === targetPile) {
-            // 回到原来的位置！！
-            this.selectedStack.forEach((node, i) => {
-                node.getComponent(Card).show();
-            })
-        } else {
-            this.tryFlipLastCard(fromPile.node);
-            this.selectedStack.forEach((node, i) => {
-                targetPile.addCard(node);
-                node.getComponent(Card).show();
-                this.tryFlipLastCard(fromPile.node);
-                logger.logView(`moveDone fromPile: ${fromPile.name} targetPile: ${targetPile.name}`);
-            })
-            this.addMoves(1);
-            /*
-            todo:
-            保存undo
-            this.undoManager.pushMove({
-                    cards: [...stack],
+    moveDone(fromPile: Pile, targetPile: Pile, isTest: boolean) {
+        if (!isTest) {
+            if (fromPile === targetPile) {
+                // 回到原来的位置！！
+                this.selectedStack.forEach((node, i) => {
+                    node.getComponent(Card).show();
+                })
+            } else {
+                // 检查是否需要翻牌
+                const fromTopCard = fromPile.getTopCard();
+                let flippedCard: Node | undefined;
+                if (fromTopCard) {
+                    const card = fromTopCard.getComponent(Card);
+                    if (card && !card.isFaceUp) {
+                        flippedCard = fromTopCard;
+                    }
+                }
+
+                // 移动牌
+                this.selectedStack.forEach((node, i) => {
+                    targetPile.addCard(node);
+                    node.getComponent(Card).show();
+                    // logger.logView(`moveDone fromPile: ${fromPile.name} targetPile: ${targetPile.name}`);
+                })
+
+                // 翻牌
+                if (flippedCard) {
+                    flippedCard.getComponent(Card).flipFaceUp();
+                }
+
+                // 保存undo
+                this.undoManager.pushMove({
+                    cards: [...this.selectedStack],
                     from: fromPile,
                     to: targetPile,
-                    oldPositions,
-                    newPositions,
-                } as any);
-             */
+                    flippedCard: flippedCard
+                });
+
+                this.addMoves(1);
+                this.autoSolver.checkLose();
+                if (this.autoSolver.checkWin()) {
+                    this.autoSolver.autoComplete()
+                }
+            }
         }
+
         // 清理副本和选中栈
         this.dragCopies.forEach(copy => copy.destroy());
         this.dragCopies = [];
@@ -376,9 +438,9 @@ export class UIPlay extends VMParentView {
     /** 翻牌处理 */
     private tryFlipLastCard(pileNode: Node | undefined | null) {
         if (!pileNode) return;
-        const children = pileNode.children;
-        if (!children || children.length === 0) return;
-        const last = children[children.length - 1];
+        const pile = pileNode.getComponent(Pile);
+        if (!pile) return;
+        const last = pile.getTopCard();
         if (!last) return;
         const c = last.getComponent(Card);
         if (c && !c.isFaceUp) {
@@ -390,50 +452,54 @@ export class UIPlay extends VMParentView {
     onScreenResize() {
         for (let col = 0; col < this.tableau.length; col++) {
             const pile = this.tableau[col];
-            const children = pile.node.children;
-            children.forEach((cardNode, i) => {
+            pile.forEachCard((cardNode) => {
                 const y = pile.computeTableauCardY(cardNode);
                 cardNode.setPosition(0, y);
             });
         }
 
         for (const pile of this.foundation) {
-            pile.node.children.forEach((cardNode) => {
+            pile.forEachCard((cardNode) => {
                 cardNode.setPosition(0, 0);
             });
         }
     }
 
-    onUndo() {
-        const action = this.undoManager.pop();
-        if (!action) return;
+    recycleWasteToStock() {
+        const cards = [...this.waste.getAllCards()].reverse();
+        for (const card of cards) {
+            this.stock.addCard(card);
+            card.getComponent(Card)!.flipFaceDown();
+        }
+    }
 
-        // 处理翻牌操作
-        if (action.flip) {
-            const card = action.flip.card.getComponent(Card);
-            if (action.flip.wasFaceUp) {
-                card.flipFaceUp();
-            } else {
-                card.flipFaceDown();
-            }
+    onUndo() {
+        if (this.undoManager.isEmpty()) {
+            logger.logView('没有可以撤销的操作');
             return;
         }
 
-        // 处理移动操作
-        const {cards, from, to, oldPositions} = action;
+        const action = this.undoManager.pop();
+        if (!action) return;
+
+        const {cards, from, to, flippedCard} = action;
+
+        // 如果有翻牌，先翻回去
+        if (flippedCard) {
+            const card = flippedCard.getComponent(Card);
+            if (card && card.isFaceUp) {
+                card.flipFaceDown();
+            }
+        }
 
         // 将牌从目标位置移回原位置
-        cards.forEach((cardNode, index) => {
+        cards.forEach((cardNode) => {
             from.addCard(cardNode);
         });
 
-        // 重新排列原pile中的牌的位置
+        // 重新排列pile中的牌的位置
         this.repositionPileCards(from);
-
-        // 如果目标pile不为空，也重新排列
-        if (to && to !== from) {
-            this.repositionPileCards(to);
-        }
+        this.repositionPileCards(to);
 
         // 减少移动次数
         this.data.moves = Math.max(0, this.data.moves - 1);
@@ -443,40 +509,37 @@ export class UIPlay extends VMParentView {
      * 重新排列pile中牌的位置
      */
     private repositionPileCards(pile: Pile) {
-        const isTableau = (pile as any).isTableau;
-        const children = pile.node.children;
-
-        if (isTableau) {
-            children.forEach((cardNode, index) => {
+        if (pile.isTableau) {
+            pile.forEachCard((cardNode) => {
                 const y = pile.computeTableauCardY(cardNode);
                 cardNode.setPosition(0, y);
             });
         } else {
             // Foundation, Stock, Waste 等都叠在一起
-            children.forEach(cardNode => {
+            pile.forEachCard((cardNode) => {
                 cardNode.setPosition(0, 0, 0);
             });
         }
     }
 
     /** 打乱扣着的牌重试 */
-    tryShuffleAndRetry() {
+    shuffleAndRetry() {
         // 1. 收集所有扣着的牌节点
         const faceDownCards: Node[] = [];
         for (const pile of this.tableau) {
-            for (const cardNode of pile.node.children) {
+            pile.forEachCard((cardNode) => {
                 const card = cardNode.getComponent(Card)!;
                 if (!card.isFaceUp) {
                     faceDownCards.push(cardNode);
                 }
-            }
+            });
         }
-        for (const cardNode of this.stock.node.children) {
+        this.stock.forEachCard((cardNode) => {
             faceDownCards.push(cardNode);
-        }
-        for (const cardNode of this.waste.node.children) {
+        });
+        this.waste.forEachCard((cardNode) => {
             faceDownCards.push(cardNode);
-        }
+        });
 
         if (faceDownCards.length === 0) return false;
 
@@ -485,20 +548,20 @@ export class UIPlay extends VMParentView {
 
         // 收集 tableau 中翻开的牌
         for (const pile of this.tableau) {
-            for (const cardNode of pile.node.children) {
+            pile.forEachCard((cardNode) => {
                 const card = cardNode.getComponent(Card)!;
                 if (card.isFaceUp) {
                     usedCards.add(`${card.suit}-${card.rank}`);
                 }
-            }
+            });
         }
 
         // 收集 foundation 中的牌
         for (const pile of this.foundation) {
-            for (const cardNode of pile.node.children) {
+            pile.forEachCard((cardNode) => {
                 const card = cardNode.getComponent(Card)!;
                 usedCards.add(`${card.suit}-${card.rank}`);
-            }
+            });
         }
 
         // 3. 生成完整的52张牌，排除已使用的牌
@@ -514,7 +577,7 @@ export class UIPlay extends VMParentView {
 
         // 4. 验证数量是否匹配
         if (availableCards.length !== faceDownCards.length) {
-            console.error(`牌数不匹配！可用牌: ${availableCards.length}, 扣着的牌: ${faceDownCards.length}`);
+            logger.trace(`牌数不匹配！可用牌: ${availableCards.length}, 扣着的牌: ${faceDownCards.length}`);
             return false;
         }
 
@@ -534,13 +597,13 @@ export class UIPlay extends VMParentView {
                 .delay(delay)
                 // 向上飞起并旋转
                 .parallel(
-                    tween().to(0.3, {
+                    tween().to(0.1, {
                         position: new Vec3(originalPos.x, originalPos.y + 100, originalPos.z)
                     }),
-                    tween().to(0.3, {
+                    tween().to(0.1, {
                         scale: new Vec3(0.8, 0.8, 1)
                     }),
-                    tween().by(0.3, {
+                    tween().by(0.1, {
                         eulerAngles: new Vec3(0, 0, 360)
                     })
                 )
@@ -552,16 +615,16 @@ export class UIPlay extends VMParentView {
                     card.init(v.suit, v.rank);
                 })
                 // 翻转回来
-                .to(0.2, {scale: new Vec3(0.8, 0.8, 1)})
+                .to(0.1, {scale: new Vec3(0.8, 0.8, 1)})
                 // 落回原位
                 .parallel(
-                    tween().to(0.4, {
+                    tween().to(0.2, {
                         position: originalPos
                     }),
-                    tween().to(0.4, {
+                    tween().to(0.2, {
                         eulerAngles: new Vec3(0, 0, 0)
                     }),
-                    tween().to(0.4, {
+                    tween().to(0.2, {
                         scale: new Vec3(0.66, 0.66, 1)
                     })
                 )
@@ -577,27 +640,31 @@ export class UIPlay extends VMParentView {
         if (this.autoSolver.isRunning()) {
             this.autoSolver.stop();
         } else {
-            this.autoSolver.start();
+            await this.autoSolver.start();
         }
     }
 
+    onMagic() {
+        this.shuffleAndRetry()
+    }
+
     onPause() {
-        this.tryShuffleAndRetry();
+        uiManager.open(UIID.UIPause, this);
     }
 
     onGameWin() {
         this.winAnimation.play();
     }
 
+    /** 结算，claim+广告+自动进入下一关 */
     onAnimationComplete() {
 
     }
 
-    recycleWasteToStock() {
-        const cards = [...this.waste.node.children].reverse();
-        for (const card of cards) {
-            this.stock.addCard(card);
-            card.getComponent(Card)!.flipFaceDown();
-        }
+    onHint() {
+
+    }
+
+    onDeal(type: string) {
     }
 }

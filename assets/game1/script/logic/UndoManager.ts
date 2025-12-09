@@ -5,12 +5,7 @@ export interface UndoMove {
     cards: Node[]; // 移动的所有牌（单张或多张）
     from: Pile; // 从哪里来
     to: Pile; // 移到哪里
-    oldPositions: Vec3[];  // 每张牌原本的本地位置
-    newPositions: Vec3[];  // 移动后的本地位置
-    flip?: {               // 如果涉及翻牌，加上这个
-        card: Node;
-        wasFaceUp: boolean;
-    };
+    flippedCard?: Node; // 移动后被翻开的牌
 }
 
 export class UndoManager {
@@ -20,16 +15,23 @@ export class UndoManager {
         this.stack.push(move);
     }
 
-    pop() {
+    pop(): UndoMove | undefined {
         return this.stack.pop();
     }
-    // 新增：清空 Undo 栈
+
+    peek(): UndoMove | undefined {
+        return this.stack.length > 0 ? this.stack[this.stack.length - 1] : undefined;
+    }
+
     clear() {
         this.stack.length = 0;
     }
 
-    // 可选：查看当前栈大小
-    size() {
+    size(): number {
         return this.stack.length;
+    }
+
+    isEmpty(): boolean {
+        return this.stack.length === 0;
     }
 }

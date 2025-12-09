@@ -17,18 +17,37 @@ export class Pile extends Component {
         this.node.on(Node.EventType.TOUCH_END, this.onClick, this);
     }
 
+    /** 获取实际可见的牌（排除被hide的牌） */
+    getVisibleCards(): Node[] {
+        return this.node.children.filter(c => c.getComponent(Card)?.isShow());
+    }
+
+    /** 获取所有牌（包括被hide的） */
+    getAllCards(): Node[] {
+        return this.node.children;
+    }
+
+    /** 获取牌的数量 */
+    getCardCount(): number {
+        return this.node.children.length;
+    }
+
     // 点击事件处理函数
     private onClick(event: EventTouch) {
-        const length = this.node.children.length
-        logger.logView(`点击了堆：${this.node.name}，堆内卡牌数：${length}`);
+        const length = this.getCardCount();
+        // logger.logView(`点击了堆：${this.node.name}，堆内卡牌数：${length}`);
         if (this.isStock && length <= 0) {
             const game = this.node.scene.getComponentInChildren(UIPlay);
             game.recycleWasteToStock();
         }
     }
 
+    isTopCard(node: Node) {
+        return node === this.getTopCard();
+    }
+
     getTopCard(): Node | null {
-        const c = this.node.children;
+        const c = this.getVisibleCards();
         return c.length > 0 ? c[c.length - 1] : null;
     }
 
@@ -37,27 +56,44 @@ export class Pile extends Component {
     }
 
     isEmpty() {
-        return this.node.children.length <= 0;
+        return this.getVisibleCards().length <= 0;
     }
 
     addCard(card: Node) {
-        card.setParent(this.node);
-        const children = this.node.children;
-        card.setSiblingIndex(children.length + 1);
+        card.setParent(this.node);  // 改变父节点
+
         if (this.isWaste) {
+            // waste 自己的布局
+            const children = this.getAllCards();
+            for (let i = 0; i < children.length; i++) {
+                const c = children[i];
+                const x = this.computeWasteCardX(c);
+                c.setPosition(x, 0);
+                c.setSiblingIndex(i);
+            }
+            return;
+        }
+
+        if (this.isFoundation) {
+            // foundation 堆：直接归位到父节点原点
             card.setPosition(0, 0);
-            // for(let i=0;i<children.length;i++) {
-            //     const child = children[i];
-            //     const x = this.computeWasteCardX(child);
-            //     child.setPosition(x, 0);
-            // }
-        } else if(this.isTableau) {
+            card.setSiblingIndex(this.getCardCount() - 1);
+            return;
+        }
+
+        if (this.isTableau) {
+            // tableau 堆：按计算的 Y 位置摆放
             const y = this.computeTableauCardY(card);
             card.setPosition(0, y);
-        } else if(this.isFoundation) {
+            card.setSiblingIndex(this.getCardCount() - 1);
+            return;
+        }
+
+        if (this.isStock) {
+            // stock 堆：归位到父节点原点
             card.setPosition(0, 0);
-        } else if(this.isStock) {
-            card.setPosition(0, 0);
+            card.setSiblingIndex(this.getCardCount() - 1);
+            return;
         }
     }
 
@@ -68,8 +104,9 @@ export class Pile extends Component {
     computeTableauCardY(cardNode: Node): number {
         let y = 0;
         const cardIndex = this.getCardIndex(cardNode);
+        const children = this.getAllCards();
         for (let i = 0; i < cardIndex; i++) {
-            const node = this.node.children[i];
+            const node = children[i];
             const card = node.getComponent(Card);
             if (!card.isFaceUp) {
                 y += -Pile.tableauFaceDownOffset;
@@ -84,24 +121,26 @@ export class Pile extends Component {
     static wasteCardXOffset = 25;
 
     computeWasteCardX(cardNode: Node): number {
-        const cardIndex = this.getCardIndex(cardNode); // 卡牌在堆中的索引（0=最旧，n-1=最新）
-        const totalCards = this.node.children.length;
-        const maxOffsetCount = 3; // 最多显示3张偏移的牌，超过的继续叠加或固定
-        const baseOffset = Pile.wasteCardXOffset; // 单张牌的x偏移量（比如15）
+        const children = this.getAllCards();
+        const total = children.length;
+        const index = this.getCardIndex(cardNode);
 
-        // 规则：最新的n张牌依次右移，旧牌叠加偏移（避免无限右移）
-        if (totalCards <= maxOffsetCount) {
-            // 卡牌数量≤3：所有牌依次右移（索引0=0, 1=1*offset, 2=2*offset）
-            return cardIndex * baseOffset;
-        } else {
-            // 卡牌数量>3：
-            // 1. 最后3张牌：依次右移（索引n-3 → 0*offset，n-2 →1*offset，n-1→2*offset）
-            // 2. 更早的牌：和倒数第3张重叠（固定偏移 = (maxOffsetCount-1)*baseOffset）
-            const relativeIndex = cardIndex - (totalCards - maxOffsetCount);
-            return relativeIndex >= 0
-                ? relativeIndex * baseOffset
-                : (maxOffsetCount - 1) * baseOffset;
+        // waste 最多显示最后三张
+        if (total <= 3) {
+            // 全部可见：位置为 index * offset
+            return index * Pile.wasteCardXOffset;
         }
+
+        // total > 3 的情况
+        const firstVisible = total - 3;  // 最后 3 张的起始 index
+
+        if (index < firstVisible) {
+            // 更早的牌全部叠在最左
+            return 0;
+        }
+
+        // 三张可见牌：0 / offset / 2*offset
+        return (index - firstVisible) * Pile.wasteCardXOffset;
     }
 
     getStackFrom(node: Node): Node[] {
@@ -112,7 +151,7 @@ export class Pile extends Component {
         }
 
         // 其他情况按原逻辑处理
-        const children = this.node.children;
+        const children = this.getAllCards();
         const idx = children.indexOf(node);
         let realIdx = idx;
         for (let i = idx; i < children.length; i++) {
@@ -123,5 +162,10 @@ export class Pile extends Component {
             }
         }
         return children.slice(realIdx);
+    }
+
+    /** 遍历所有牌（用于替代直接访问node.children） */
+    forEachCard(callback: (cardNode: Node, index: number) => void) {
+        this.getAllCards().forEach(callback);
     }
 }

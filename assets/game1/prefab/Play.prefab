@@ -5250,7 +5250,7 @@
     },
     "component": "",
     "_componentId": "681edd2m6hFspRshRkJiDmG",
-    "handler": "onWasteToStock",
+    "handler": "onHint",
     "customEventData": ""
   },
   {
@@ -6638,7 +6638,7 @@
     },
     "component": "",
     "_componentId": "681edd2m6hFspRshRkJiDmG",
-    "handler": "tryShuffleAndRetry",
+    "handler": "onMagic",
     "customEventData": ""
   },
   {
@@ -7332,7 +7332,7 @@
     },
     "component": "",
     "_componentId": "681edd2m6hFspRshRkJiDmG",
-    "handler": "autoSolve",
+    "handler": "onPause",
     "customEventData": ""
   },
   {
