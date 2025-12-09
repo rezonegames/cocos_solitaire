@@ -54,6 +54,7 @@ export class UIPlay extends VMParentView {
 
     // 游戏运行状态
     private _isRunning = false;
+    private _isOperating = false; // 是否正在操作中（防止并发操作）
 
     // 玩家数据
     private player = VM.get<Player>('player').$data;
@@ -175,38 +176,38 @@ export class UIPlay extends VMParentView {
 
     /** 显示加分动画 */
     private showScoreAnimation(cardNode: Node, score: number) {
-        // const {Label, Color} = require('cc');
-        
-        // 创建文本节点
         const scoreNode = new Node('ScoreText');
         const label = scoreNode.addComponent(Label);
         label.string = `+${score}`;
         label.fontSize = 40;
-        label.color = new Color(255, 215, 0); // 金色
+        label.color = new Color(255, 215, 0);
         
-        // 添加到dragNode（最顶层）
         scoreNode.setParent(this.dragNode);
         
-        // 设置初始位置（牌的中心）
+        const cardUI = cardNode.getComponent(UITransform);
+        const cardHeight = cardUI ? cardUI.height : 200;
+        
         const worldPos = cardNode.getWorldPosition();
         scoreNode.setWorldPosition(worldPos);
+        const localPos = scoreNode.position.clone();
+        localPos.y -= cardHeight / 2;
+        scoreNode.setPosition(localPos);
         
-        // 设置透明度
         const opacity = scoreNode.addComponent(UIOpacity);
         opacity.opacity = 0;
         
-        // 动画：向上飞 + 淡入淡出
+        const targetY = localPos.y + cardHeight;
         tween(scoreNode)
             .parallel(
-                tween().to(0.3, {position: new Vec3(0, 100, 0)}, {easing: 'sineOut'}),
-                tween().to(0.15, {}, {onUpdate: () => {
-                    opacity.opacity = Math.min(255, opacity.opacity + 17);
+                tween().to(0.8, {position: new Vec3(localPos.x, targetY, localPos.z)}, {easing: 'sineOut'}),
+                tween().to(0.3, {}, {onUpdate: () => {
+                    opacity.opacity = Math.min(255, opacity.opacity + 12);
                 }})
             )
-            .delay(0.2)
-            .to(0.3, {}, {
+            .delay(0.3)
+            .to(0.5, {}, {
                 onUpdate: () => {
-                    opacity.opacity = Math.max(0, opacity.opacity - 17);
+                    opacity.opacity = Math.max(0, opacity.opacity - 10);
                 }
             })
             .call(() => {
@@ -226,6 +227,8 @@ export class UIPlay extends VMParentView {
 
     /** 单击 */
     onClickCard(cardNode: Node, offset: Vec3) {
+        if (this._isOperating) return;
+        
         const card = cardNode.getComponent(Card);
         const pile = cardNode.parent.getComponent(Pile);
         // 如果点击的是stock的card
@@ -260,6 +263,9 @@ export class UIPlay extends VMParentView {
 
     // 拖拽相关方法
     startDrag(cardNode: Node, offset: Vec3): Node[] {
+        if (this._isOperating) return [];
+        
+        this._isOperating = true;
         this.dragOffset = offset;
         this.selectedStack = this.getStackFrom(cardNode);
         this.dragCopies = [];
@@ -292,7 +298,10 @@ export class UIPlay extends VMParentView {
     }
 
     endDrag() {
-        if (!this.dragCopies.length) return;
+        if (!this.dragCopies.length) {
+            this._isOperating = false;
+            return;
+        }
         this.handleDrop();
     }
 
@@ -468,6 +477,7 @@ export class UIPlay extends VMParentView {
         this.dragCopies.forEach(copy => copy.destroy());
         this.dragCopies = [];
         this.selectedStack = [];
+        this._isOperating = false;
     }
 
     /** 翻牌处理 */
