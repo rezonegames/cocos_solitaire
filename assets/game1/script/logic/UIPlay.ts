@@ -72,6 +72,11 @@ export class UIPlay extends VMParentView {
 
     /** 初始化游戏 */
     async initGame() {
+        // 重置数据
+        this.data.score = 0;
+        this.data.scoreDetail = {};
+        this.data.moves = 0;
+
         /** 初始化 piles 并标注类型，准备牌桌 */
         this.tableau = this.tableauRoots.map(n => {
             const p = n.getComponent(Pile) ?? n.addComponent(Pile);
@@ -87,6 +92,20 @@ export class UIPlay extends VMParentView {
             p.isFoundation = true;
             return p;
         });
+
+        // 清理所有pile中的牌
+        const allPiles = [
+            ...this.tableau,
+            ...this.foundation,
+            this.stock,
+            this.waste
+        ];
+        for (const pile of allPiles) {
+            const cards = [...pile.getAllCards()];
+            cards.forEach(card => {
+                card.removeFromParent();
+            });
+        }
 
         /** 生成扑克牌 */
         this.factory = new CardFactory(this.cardPrefab);

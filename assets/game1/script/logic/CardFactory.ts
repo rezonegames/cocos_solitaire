@@ -21,7 +21,7 @@ export class CardFactory {
 
     async generateDeck(kind: string, level: number): Promise<Node[]> {
         const globalData = VM.get<GlobalData>('globalData').$data;
-        const v = globalData.getLevelConfig(kind, level);
+        let v = globalData.getLevelConfig(kind, level);
         // 初始化deck
         if (_.isEmpty(this.deck)) {
             for (const suit of suits) {
@@ -35,15 +35,11 @@ export class CardFactory {
         }
         if (!v) {
             logger.trace(`generateDeck没有可使用的配置！！`)
-            this.shuffle1(this.deck, level);
-        } else {
-            logger.logView(`generateDeck使用配置`);
-            const vList = v.split(',');
-            this.deck = _.sortBy(this.deck, (node: Node) => vList.indexOf(node.getComponent(Card)!.key));
-            this.deck.forEach((cardNode: Node) => {
-                cardNode.parent = null;
-            })
+            // this.shuffle1(this.deck, level);
+            v = "48,13,22,9,52,50,5,44,33,18,1,19,25,23,16,41,11,8,15,10,45,7,14,35,40,26,21,17,6,39,38,46,28,34,27,47,51,43,42,12,3,29,24,20,37,2,36,4,49,32,31,30"
         }
+        const vList = v.split(',');
+        this.deck = _.sortBy(this.deck, (node: Node) => vList.indexOf(node.getComponent(Card)!.key));
         return this.deck;
     }
 

@@ -105,6 +105,7 @@ export class GlobalData {
     // 获取关卡配置
     getLevelConfig(kind: string, k: number) {
         const configList = this.levelConfig[kind];
+        if(!configList) return null;
         const index = _.findIndex(configList, (item: any) => item.k === k)
         const v = configList[index].v;
         logger.logConfig(`${kind}_${k}: ${v}`);
@@ -154,10 +155,9 @@ export class GameInstance {
         const language = storageManager.get('language', 'en');
         await languageManager.setLanguage('game1', language);
         const kind = storageManager.get('kind', '0');
-        player.setKind(kind);
+        player.setKind('0'); // todo：还原
         const level = storageManager.getNumber('level', 1);
-        player.setLevel(level);
-        // storageManager.set('items', JSON.stringify( {coin: 1002, }));
+        player.setLevel(1);
         const items = storageManager.get('items', {coin: 1000, });
         player.setItems(JSON.parse(items));
 
@@ -170,6 +170,7 @@ export class GameInstance {
             [UIID.UIPause]: {bundle, prefab: 'prefab/Pause'},
             [UIID.UIWin]: {bundle, prefab: 'prefab/Win'},
             [UIID.UILose]: {bundle, prefab: 'prefab/Lose'},
+            [UIID.UILevelUp]: {bundle, prefab: 'prefab/LevelUp'},
         })
         uiManager.open(UIID.UIBackGround);
         uiManager.open(UIID.UISelectGame);

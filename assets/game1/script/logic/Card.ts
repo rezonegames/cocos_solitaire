@@ -32,16 +32,19 @@ export class Card extends Component {
     }
 
     detail() {
-        return `suit: ${this.suit} v: ${this.rankToKey()} isFaceUp: ${this.isFaceUp}`;
+        const m = {
+            'fk': '♦️',
+            'mh': '♣️',
+            'hx': '♥️',
+            'ht': '♠️'
+        }
+        return `${this.key}：${m[this.suit]}${this.rankToKey()} isFaceUp: ${this.isFaceUp}`;
     }
 
-    init(suit: string, rank: number, key?: string) {
+    init(suit: string, rank: number) {
         this.suit = suit;
         this.rank = rank;
-        this.key = key;
-        if (!this.key) {
-            this.key = (_.findIndex(suits, suit) * 13 + rank).toString();
-        }
+        this.key = (_.indexOf(suits, suit) * 13 + rank).toString();
         // logger.logView(`init suit: ${this.suit} v: ${this.rankToKey()}`);
         this.loadSprites();
         this.holdSprite.enabled = false;
