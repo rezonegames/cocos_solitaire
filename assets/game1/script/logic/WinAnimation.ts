@@ -34,26 +34,26 @@ export class WinAnimation {
         }, 500);
     }
 
-    /** 对所有牌执行贝塞尔动画 */
+    /** 对所有牌执行动画 */
     private startAnimation() {
         let delay = 0;
+        let completedCount = 0;
 
         for (let i = 0; i < this.cards.length; i++) {
             const card = this.cards[i];
-            const startPos = card.worldPosition.clone();
+            const startPos = card.getWorldPosition();
 
             // 计算心形上的位置
-            const t = (i / this.cards.length) * Math.PI * 2; // 0 到 2π
+            const t = (i / this.cards.length) * Math.PI * 2;
             const heartPos = this.getHeartPosition(t);
-
             const end = this.center.clone().add(heartPos);
 
             // 随机中间控制点
-            const mid1 = startPos.add(new Vec3(
-                randomRange(-200, 200),
-                randomRange(100, 300),
+            const mid1 = new Vec3(
+                startPos.x + randomRange(-200, 200),
+                startPos.y + randomRange(100, 300),
                 0
-            ));
+            );
             const mid2 = new Vec3(
                 (startPos.x + end.x) / 2 + randomRange(-100, 100),
                 (startPos.y + end.y) / 2 + randomRange(100, 200),
@@ -62,24 +62,32 @@ export class WinAnimation {
 
             tween(card)
                 .delay(delay)
-                .to(0.35, {worldPosition: mid1})
-                .to(0.35, {worldPosition: mid2})
-                .to(0.45, {worldPosition: end})
+                .parallel(
+                    tween().to(1.2, {worldPosition: mid1}),
+                    tween().to(0.8, {scale: new Vec3(0.8, 0.8, 1)})
+                )
+                .to(1.2, {worldPosition: mid2})
+                .parallel(
+                    tween().to(1.2, {worldPosition: end}),
+                    tween().to(1.0, {scale: new Vec3(0.6, 0.6, 1)})
+                )
                 .call(() => {
-                    // 最后一张牌动画结束时调用
-                    if (i === this.cards.length - 1) {
-                        this.playing.onAnimationComplete(); // 替换成你的函数名
+                    completedCount++;
+                    if (completedCount === this.cards.length) {
+                        setTimeout(() => {
+                            this.playing.onAnimationComplete();
+                        }, 1000);
                     }
                 })
                 .start();
 
-            delay += 0.03;
+            delay += 0.08; // 固定延迟
         }
     }
 
-// 心形参数方程
+    /** 心形参数方程 */
     private getHeartPosition(t: number): Vec3 {
-        const scale = 80; // 调整心形大小
+        const scale = 3; // 调整心形大小
         const x = scale * 16 * Math.pow(Math.sin(t), 3);
         const y = scale * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
         return new Vec3(x, y, 0);

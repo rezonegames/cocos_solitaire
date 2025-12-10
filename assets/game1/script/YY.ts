@@ -58,17 +58,19 @@ export class Player {
         this.kind = kind;
         storageManager.set('kind', kind);
     }
+
     // 设置等级
     setLevel(level: number) {
         this.level = level;
         this.levelString = LanguageLabel.pack({dataId: `ui_level`, params: {level: 10}});
     }
+
     // 提升等级
     addLevel() {
         const globalData = VM.get<GlobalData>('globalData').$data;
         const configList = globalData.levelConfig[this.kind];
         const index = _.findIndex(configList, (item: any) => item.k === this.level);
-        const newLevel = configList[index]?.k;
+        const newLevel = configList[index + 1]?.k;
         if (!newLevel) {
             this.kind = `${Number(this.kind) + 1}`
             this.level = 1;
@@ -76,8 +78,12 @@ export class Player {
             this.level = newLevel;
         }
         this.levelString = LanguageLabel.pack({dataId: `ui_level`, params: {level: 10}});
+
+        logger.logView(`new Level: ${this.level} kind: ${this.kind}}`);
+        storageManager.set('kind', this.kind);
         storageManager.set('level', this.level);
     }
+
     // 设置背包
     setItems(items: any) {
         _.forEach(items, (v, k) => {
@@ -85,6 +91,7 @@ export class Player {
         })
         logger.logModel(`items: ${JSON.stringify(this.items)}`)
     }
+
     addItems(items: any) {
         _.forEach(items, (v, k) => {
             this.items[k] += v;
@@ -105,7 +112,7 @@ export class GlobalData {
     // 获取关卡配置
     getLevelConfig(kind: string, k: number) {
         const configList = this.levelConfig[kind];
-        if(!configList) return null;
+        if (!configList) return null;
         const index = _.findIndex(configList, (item: any) => item.k === k)
         const v = configList[index].v;
         logger.logConfig(`${kind}_${k}: ${v}`);
@@ -135,6 +142,7 @@ export class GameInstance {
          ]
          }
          *  */
+        logger.logView(`init start...`);
         const v = await resLoader.loadAsync(bundleName, 'config/f2', JsonAsset)
         // globalData.levelConfig =v.json;
         globalData.levelConfig = _
@@ -142,24 +150,26 @@ export class GameInstance {
             // 1. 把每个 key 解析成 { group, k, v }
             .map((value, key) => {
                 const [group, k] = key.split("_").map(Number);
-                return { group, k, v: value };
+                return {group, k, v: value};
             })
             // 2. 以 group 分组
             .groupBy("group")
             // 3. 调整结构：只保留 k,v 并按 k 排序
             .mapValues(arr =>
-                _.sortBy(arr.map(item => ({ k: item.k, v: item.v })), "k")
+                _.sortBy(arr.map(item => ({k: item.k, v: item.v})), "k")
             )
             .value();
+        logger.logConfig(`levelConfig done`);
 
         const language = storageManager.get('language', 'en');
         await languageManager.setLanguage('game1', language);
         const kind = storageManager.get('kind', '0');
-        player.setKind('0'); // todo：还原
+        player.setKind(kind); // todo：还原
         const level = storageManager.getNumber('level', 1);
-        player.setLevel(1);
-        const items = storageManager.get('items', {coin: 1000, });
+        player.setLevel(level);
+        const items = storageManager.get('items', {coin: 1000,});
         player.setItems(JSON.parse(items));
+        logger.logConfig(`player/globalData done`);
 
         const bundle = bundleName;
         uiManager.initUIConf({
@@ -174,5 +184,7 @@ export class GameInstance {
         })
         uiManager.open(UIID.UIBackGround);
         uiManager.open(UIID.UISelectGame);
+
+        logger.logView(`init done`);
     }
 }

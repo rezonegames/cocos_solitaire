@@ -204,7 +204,8 @@ class Logger {
 
         const type = names[tag];
         if (this.lc == null) {
-            const backLog = console.log || log;
+            // const backLog = console.log || log;
+            const backLog = console.log;
             color = "color:" + color + ";";
             if (describe) {
                 backLog.call(null, "%c%s%s%s:%s%o", color, this.getDateString(), '[' + type + ']', this.stack(5), describe, msg);

@@ -138,13 +138,20 @@ export class UIPlay extends VMParentView {
         }
 
         /** 自动完成 */
-        this.autoSolver = new AutoSolver();
+        if (!this.autoSolver) {
+            this.autoSolver = new AutoSolver();
+        }
         this.autoSolver.init(this);
         /** 动画 */
-        this.winAnimation = new WinAnimation();
+        if (!this.winAnimation) {
+            this.winAnimation = new WinAnimation();
+        }
         this.winAnimation.init(this);
+        this.winAnimation.reset();
         /** 重做 */
-        this.undoManager = new UndoManager();
+        if (!this.undoManager) {
+            this.undoManager = new UndoManager();
+        }
         this.undoManager.clear?.();
     }
 
@@ -246,17 +253,19 @@ export class UIPlay extends VMParentView {
             return;
         } else {
             const fromPile = cardNode.parent.getComponent(Pile);
-            for (const pile of this.tableau) {
-                if (this.canPlaceToTableau(card, pile)) {
-                    this.startDrag(cardNode, offset);
-                    this.moveStack(fromPile, this.dragCopies, pile);
-                    return;
-                }
-            }
+            // 优先尝试Foundation
             for (const fd of this.foundation) {
                 if (this.canPlaceToFoundation(card, fd)) {
                     this.startDrag(cardNode, offset);
                     this.moveStack(fromPile, this.dragCopies, fd);
+                    return;
+                }
+            }
+            // 再尝试Tableau
+            for (const pile of this.tableau) {
+                if (this.canPlaceToTableau(card, pile)) {
+                    this.startDrag(cardNode, offset);
+                    this.moveStack(fromPile, this.dragCopies, pile);
                     return;
                 }
             }
@@ -706,8 +715,10 @@ export class UIPlay extends VMParentView {
 
     /** 结算，claim+广告+自动进入下一关 */
     onAnimationComplete() {
-        logger.logView(`完成，准备下一关`);
-        uiManager.open(UIID.UIWin, this);
+        setTimeout(()=>{
+            logger.logView(`完成，准备下一关`);
+            uiManager.open(UIID.UIWin, this);
+        }, 2000);
     }
 
     async onHint() {
