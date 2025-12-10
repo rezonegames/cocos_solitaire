@@ -312,11 +312,9 @@ export class AutoSolver {
         logger.logView('🎯 开始自动完成游戏...');
         let moved = true;
         let loopCount = 0;
-        const maxLoops = 100; // 防止无限循环
 
-        while (moved && loopCount < maxLoops) {
+        while (moved) {
             moved = false;
-            loopCount++;
 
             // 尝试从Waste移动
             const wasteTop = this.playing.waste.getTopCard();
@@ -353,10 +351,6 @@ export class AutoSolver {
                 }
                 if (moved) break;
             }
-        }
-
-        if (loopCount >= maxLoops) {
-            logger.logView('⚠️ 自动完成超出最大循环次数');
         }
         logger.logView('✅ 自动完成结束');
         this.playing.onAnimationComplete();

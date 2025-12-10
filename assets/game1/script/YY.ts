@@ -129,6 +129,7 @@ export let bundleName = "game1"
 export class GameInstance {
 
     static async init() {
+        // storageManager.clear();
         // 加载关卡
         /**
          * 重新加载数据
@@ -167,7 +168,7 @@ export class GameInstance {
         player.setKind(kind); // todo：还原
         const level = storageManager.getNumber('level', 1);
         player.setLevel(level);
-        const items = storageManager.get('items', {coin: 1000,});
+        const items = storageManager.get('items', JSON.stringify({coin: 1000,}));
         player.setItems(JSON.parse(items));
         logger.logConfig(`player/globalData done`);
 

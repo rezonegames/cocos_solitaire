@@ -1,4 +1,18 @@
-import {_decorator, Canvas, director, instantiate, Node, Prefab, tween, UIOpacity, UITransform, Vec2, Vec3, Label, Color} from 'cc';
+import {
+    _decorator,
+    Canvas,
+    director,
+    instantiate,
+    Node,
+    Prefab,
+    tween,
+    UIOpacity,
+    UITransform,
+    Vec2,
+    Vec3,
+    Label,
+    Color
+} from 'cc';
 import _ from 'lodash-es';
 import VMParentView from "db://assets/libs/gui/VMParentView";
 import {CardFactory} from './CardFactory';
@@ -126,10 +140,10 @@ export class UIPlay extends VMParentView {
                 const stockCards = this.stock.getAllCards();
                 const index = stockCards.length - 1 - j * (6 - i);
                 const card = stockCards[index];
-                
+
                 const pile = this.tableau[i];
                 pile.addCard(card);
-                
+
                 const cardComp = card.getComponent(Card)!;
                 const faceUp = j === i;
                 if (faceUp) cardComp.flipFaceUp();
@@ -177,7 +191,7 @@ export class UIPlay extends VMParentView {
     /** 加分 */
     addScore(card: Card, score: number = 0) {
         const key = card.key;
-        if(!this.data.scoreDetail[key]) {
+        if (!this.data.scoreDetail[key]) {
             this.data.scoreDetail[key] = score;
             this.data.score += score;
             this.showScoreAnimation(card.node, score);
@@ -191,28 +205,30 @@ export class UIPlay extends VMParentView {
         label.string = `+${score}`;
         label.fontSize = 40;
         label.color = new Color(255, 215, 0);
-        
+
         scoreNode.setParent(this.dragNode);
-        
+
         const cardUI = cardNode.getComponent(UITransform);
         const cardHeight = cardUI ? cardUI.height : 200;
-        
+
         const worldPos = cardNode.getWorldPosition();
         scoreNode.setWorldPosition(worldPos);
         const localPos = scoreNode.position.clone();
         localPos.y -= cardHeight / 2;
         scoreNode.setPosition(localPos);
-        
+
         const opacity = scoreNode.addComponent(UIOpacity);
         opacity.opacity = 0;
-        
+
         const targetY = localPos.y + cardHeight;
         tween(scoreNode)
             .parallel(
                 tween().to(0.8, {position: new Vec3(localPos.x, targetY, localPos.z)}, {easing: 'sineOut'}),
-                tween().to(0.3, {}, {onUpdate: () => {
-                    opacity.opacity = Math.min(255, opacity.opacity + 12);
-                }})
+                tween().to(0.3, {}, {
+                    onUpdate: () => {
+                        opacity.opacity = Math.min(255, opacity.opacity + 12);
+                    }
+                })
             )
             .delay(0.3)
             .to(0.5, {}, {
@@ -238,7 +254,7 @@ export class UIPlay extends VMParentView {
     /** 单击 */
     onClickCard(cardNode: Node, offset: Vec3) {
         if (this._isOperating) return;
-        
+
         const card = cardNode.getComponent(Card);
         const pile = cardNode.parent.getComponent(Pile);
         // 如果点击的是stock的card
@@ -276,7 +292,7 @@ export class UIPlay extends VMParentView {
     // 拖拽相关方法
     startDrag(cardNode: Node, offset: Vec3): Node[] {
         if (this._isOperating) return [];
-        
+
         this._isOperating = true;
         this.dragOffset = offset;
         this.selectedStack = this.getStackFrom(cardNode);
@@ -470,16 +486,17 @@ export class UIPlay extends VMParentView {
                 });
 
                 this.addMoves(1);
-                if(targetPile.isFoundation) {
+                if (targetPile.isFoundation) {
                     this.addScore(this.selectedStack[0].getComponent(Card), 10);
                 }
-                this.autoSolver.checkLose();
+                if (this.autoSolver.checkLose()) {
+
+                }
                 if (this.autoSolver.checkWin()) {
                     this.autoSolver.autoComplete()
                 }
             }
-        }
-        else {
+        } else {
             this.selectedStack.forEach((node, i) => {
                 node.getComponent(Card).show();
             })
@@ -715,10 +732,10 @@ export class UIPlay extends VMParentView {
 
     /** 结算，claim+广告+自动进入下一关 */
     onAnimationComplete() {
-        setTimeout(()=>{
+        setTimeout(() => {
             logger.logView(`完成，准备下一关`);
             uiManager.open(UIID.UIWin, this);
-        }, 2000);
+        }, 1000);
     }
 
     async onHint() {
