@@ -72,81 +72,65 @@ export class UIPlay extends VMParentView {
 
     /** 初始化游戏 */
     async initGame() {
-        // 初始化 piles 并标注类型
+        /** 初始化 piles 并标注类型，准备牌桌 */
         this.tableau = this.tableauRoots.map(n => {
             const p = n.getComponent(Pile) ?? n.addComponent(Pile);
             p.isTableau = true;
             return p;
         });
-
         this.stock = this.stockRoot.getComponent(Pile) ?? this.stockRoot.addComponent(Pile);
         this.stock.isStock = true;
-
         this.waste = this.wasteRoot.getComponent(Pile) ?? this.wasteRoot.addComponent(Pile);
         this.waste.isWaste = true;
-
         this.foundation = this.foundationRoots.map(n => {
             const p = n.getComponent(Pile) ?? n.addComponent(Pile);
             p.isFoundation = true;
             return p;
         });
 
-        this.undoManager = new UndoManager();
+        /** 生成扑克牌 */
         this.factory = new CardFactory(this.cardPrefab);
         let deck = await this.factory.generateDeck(this.player.kind, this.player.level);
-        this.factory.shuffle1(deck, 1);
 
-        // 发牌到 tableau
-        // logger.logView('=== 开始发牌到Tableau ===');
-        for (let col = 0; col < 7; col++) {
-            // logger.logView(`第${col + 1}列:`);
-            for (let j = 0; j <= col; j++) {
-                const card = deck.shift()!;
-                const pile = this.tableau[col];
-                pile.addCard(card);
-                const cardComp = card.getComponent(Card)!;
-                const faceUp = j === col;
-                if (faceUp) cardComp.flipFaceUp();
-                else cardComp.flipFaceDown();
-                // logger.logView(`  位置${j}: ${cardComp.detail()} ${faceUp ? '(翻开)' : '(扣着)'}`);
-            }
-        }
-        // logger.logView('=== Tableau发牌完成 ===');
-
-        // 剩余牌放 stock
-        // logger.logView(`=== Stock剩余${deck.length}张牌 ===`);
+        /** 下面是发牌逻辑：todo：重写 */
+        deck.reverse();
+        // 先将所有牌放入stock（对应U3D的holderHelpClose）
         for (const card of deck) {
             this.stock.addCard(card);
             const cardComp = card.getComponent(Card)!;
             cardComp.flipFaceDown();
-            // logger.logView(`  ${cardComp.detail()}`);
         }
-        // logger.logView('=== Stock发牌完成 ===');
+        // 从stock发牌到tableau（对应U3D的发牌逻辑）
+        for (let i = 0; i < 7; i++) {
+            for (let j = 0; j <= i; j++) {
+                // 计算从stock末尾取牌的索引：listCard.Count - 1 - j * (6 - i)
+                const stockCards = this.stock.getAllCards();
+                const index = stockCards.length - 1 - j * (6 - i);
+                const card = stockCards[index];
+                
+                const pile = this.tableau[i];
+                pile.addCard(card);
+                
+                const cardComp = card.getComponent(Card)!;
+                const faceUp = j === i;
+                if (faceUp) cardComp.flipFaceUp();
+                else cardComp.flipFaceDown();
+            }
+        }
 
-        // 自动完成
+        /** 自动完成 */
         this.autoSolver = new AutoSolver();
         this.autoSolver.init(this);
-        // 动画
+        /** 动画 */
         this.winAnimation = new WinAnimation();
         this.winAnimation.init(this);
+        /** 重做 */
+        this.undoManager = new UndoManager();
+        this.undoManager.clear?.();
     }
 
     /** 重新开始 */
     async restartGame() {
-        const allPiles: Pile[] = [
-            ...this.tableau,
-            ...this.foundation,
-            this.stock,
-            this.waste
-        ];
-
-        // 收集所有牌并删除
-        for (const pile of allPiles) {
-            const cards = [...pile.getAllCards()];
-            cards.forEach(card => card.destroy());
-        }
-
-        this.undoManager.clear?.();
         await this.initGame();
     }
 
@@ -681,7 +665,7 @@ export class UIPlay extends VMParentView {
     }
 
 
-    async autoSolve() {
+    async onAutoSolve() {
         if (this.autoSolver.isRunning()) {
             this.autoSolver.stop();
         } else {
@@ -703,7 +687,8 @@ export class UIPlay extends VMParentView {
 
     /** 结算，claim+广告+自动进入下一关 */
     onAnimationComplete() {
-
+        logger.logView(`完成，准备下一关`);
+        uiManager.open(UIID.UIWin, this);
     }
 
     async onHint() {

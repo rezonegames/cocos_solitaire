@@ -2,59 +2,49 @@ import {_decorator, JsonAsset, Prefab, Node} from 'cc';
 import _ from 'lodash-es';
 import {Card, suits} from './Card';
 import {ResUtil} from "db://assets/libs/res/ResUtil";
-import {bundleName} from "db://assets/game1/script/YY";
-import {resLoader} from "db://assets/libs/res/ResLoader";
 import {logger} from "db://assets/libs/log/Logger";
+import {VM} from "db://assets/libs/modelview/ViewModel";
+import {GlobalData, Player} from "db://assets/game1/script/YY";
 
 const {ccclass, property} = _decorator;
 
 @ccclass('CardFactory')
 export class CardFactory {
 
+    deck: Node[] = [];
+
     constructor(
         private cardPrefab: Prefab,
     ) {
+
     }
 
-    levels={};
-
     async generateDeck(kind: string, level: number): Promise<Node[]> {
-        if(_.isEmpty(this.levels)) {
-            // 重新加载数据
-            const v = await resLoader.loadAsync(bundleName, 'config/f2', JsonAsset)
-            this.levels = v.json;
-        }
-        const key = `${kind}_${level}`;
-        const v = this.levels[key];
-        const deck: Node[] = [];
-        if (!v) {
+        const globalData = VM.get<GlobalData>('globalData').$data;
+        const v = globalData.getLevelConfig(kind, level);
+        // 初始化deck
+        if (_.isEmpty(this.deck)) {
             for (const suit of suits) {
                 for (let rank = 1; rank <= 13; rank++) {
                     const cardNode = ResUtil.instantiate(this.cardPrefab);
                     const card = cardNode.getComponent(Card)!;
                     card.init(suit, rank);
-                    deck.push(cardNode);
+                    this.deck.push(cardNode);
                 }
             }
-            this.shuffle1(deck, level);
-        } else {
-            logger.logView(`generateDeck use f2 level: ${key}`);
-            const vList = v.split(',');
-            for(let i = 0; i < vList.length; i++) {
-                const def = vList[i];
-                const n = _.toNumber(def)
-                const suitIndex = Math.floor((n - 1) / 13)
-                const suit = suits[suitIndex]
-                const rank = (n - 1) % 13 + 1
-                const cardNode = ResUtil.instantiate(this.cardPrefab);
-                const card = cardNode.getComponent(Card)!;
-                card.init(suit, rank, def);
-                deck.push(cardNode);
-            }
         }
-
-        return deck;
-
+        if (!v) {
+            logger.trace(`generateDeck没有可使用的配置！！`)
+            this.shuffle1(this.deck, level);
+        } else {
+            logger.logView(`generateDeck使用配置`);
+            const vList = v.split(',');
+            this.deck = _.sortBy(this.deck, (node: Node) => vList.indexOf(node.getComponent(Card)!.key));
+            this.deck.forEach((cardNode: Node) => {
+                cardNode.parent = null;
+            })
+        }
+        return this.deck;
     }
 
     /**

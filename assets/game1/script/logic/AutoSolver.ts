@@ -359,6 +359,7 @@ export class AutoSolver {
             logger.logView('⚠️ 自动完成超出最大循环次数');
         }
         logger.logView('✅ 自动完成结束');
+        this.playing.onAnimationComplete();
     }
 
     /** 检查是否可以赢（所有打开的牌都checkWin可以移到Foundation） */
