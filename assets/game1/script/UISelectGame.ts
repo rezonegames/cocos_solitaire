@@ -6,6 +6,7 @@ const { ccclass, property } = _decorator;
 
 @ccclass('UISelectGame')
 export class UISelectGame extends UIView {
+
     start() {
 
     }

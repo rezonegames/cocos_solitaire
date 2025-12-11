@@ -5,6 +5,7 @@ import {Pile} from './Pile';
 import {suits} from "./Card";
 import _ from 'lodash-es';
 import {logger} from "db://assets/libs/log/Logger";
+import {delay} from "db://assets/libs/utils/Utils";
 
 const {ccclass} = _decorator;
 
@@ -28,6 +29,8 @@ export class AutoSolver {
     init(game: UIPlay, isCurGameOneCard: boolean = true) {
         this.playing = game;
         this.isCurGameOneCard = isCurGameOneCard;
+        this.running = false;
+        this.needCheckLose = true;
     }
 
     /** 是否正在自动求解 */
@@ -36,7 +39,7 @@ export class AutoSolver {
     }
 
     /** 开始自动求解（贴合 U3D 逻辑的执行流程） */
-    async start() {
+    async testStart() {
         if (this.running) return;
         this.running = true;
         this.loseTimes = 0;
@@ -62,31 +65,31 @@ export class AutoSolver {
             if (hints.length > 0) {
                 const hint = hints[0];
                 await this.executeHint(hint);
-                await this.delay(this.actionDelay);
+                await delay(this.actionDelay);
                 continue;
             }
 
             // 优先级2：移动帮助堆（Waste）的牌到目标堆/游戏堆
             if (await this.tryMoveWasteCard()) {
-                await this.delay(this.actionDelay);
+                await delay(this.actionDelay);
                 continue;
             }
 
             // 优先级3：解锁游戏堆（Tableau）的扣牌
             if (await this.tryFlipTableauCard()) {
-                await this.delay(this.flipBeforeMoveDelay);
+                await delay(this.flipBeforeMoveDelay);
                 continue;
             }
 
             // 优先级4：抽取帮助堆新牌（Stock → Waste）
             if (await this.tryDrawFromStock()) {
-                await this.delay(this.actionDelay);
+                await delay(this.actionDelay);
                 continue;
             }
 
             // 优先级5：回收帮助堆（Waste → Stock）
             if (await this.tryRecycleWaste()) {
-                await this.delay(this.actionDelay);
+                await delay(this.actionDelay);
                 continue;
             }
 
@@ -98,7 +101,7 @@ export class AutoSolver {
     }
 
     /** 停止自动求解 */
-    stop() {
+     testStop() {
         this.running = false;
         logger.logView('AutoSolver: 停止自动求解');
     }
@@ -153,7 +156,7 @@ export class AutoSolver {
             const card = hint.fromCard.getComponent(Card);
             logger.logView(`执行提示 ${i + 1}: ${card.detail()} -> ${hint.toPile.node.name}`);
             await this.executeHint(hint, true); // isTest=true 不保存undo
-            await this.delay(1000);
+            await delay(1000);
         }
         logger.logView('=== Test: 测试完成 ===');
     }
@@ -218,6 +221,7 @@ export class AutoSolver {
                 // 尝试移到其他 Tableau
                 for (const toPile of this.playing.tableau) {
                     if (fromPile === toPile) continue;
+                    // todo：如果card[0]的rank为13，并且这一列没有flapdown的牌，不能移动到pile为空的列
                     if (this.playing.canPlaceToTableau(card, toPile)) {
                         hintList.push({fromCard: cardNode, toPile: toPile});
                     }
@@ -238,7 +242,7 @@ export class AutoSolver {
 
         // 创建拖拽副本并执行移动
         const dragCopies = this.playing.startDrag(fromCard, new Vec3());
-        await this.delay(100);
+        await delay(100);
         this.playing.moveStack(fromPile, dragCopies, toPile, isTest);
     }
 
@@ -309,10 +313,10 @@ export class AutoSolver {
 
     /** 自动完成游戏（将所有牌移到Foundation） */
     async autoComplete(): Promise<void> {
+        if(this.isRunning()) return ;
+        this.running = true;
         logger.logView('🎯 开始自动完成游戏...');
         let moved = true;
-        let loopCount = 0;
-
         while (moved) {
             moved = false;
 
@@ -324,7 +328,7 @@ export class AutoSolver {
                     if (this.playing.canPlaceToFoundation(card, fd)) {
                         const dragCopies = this.playing.startDrag(wasteTop, new Vec3());
                         this.playing.moveStack(this.playing.waste, dragCopies, fd);
-                        await this.delay(300); // 等待动画完成
+                        await delay(300); // 等待动画完成
                         moved = true;
                         break;
                     }
@@ -344,7 +348,7 @@ export class AutoSolver {
                     if (this.playing.canPlaceToFoundation(card, fd)) {
                         const dragCopies = this.playing.startDrag(topCard, new Vec3());
                         this.playing.moveStack(pile, dragCopies, fd);
-                        await this.delay(300); // 等待动画完成
+                        await delay(300); // 等待动画完成
                         moved = true;
                         break;
                     }
@@ -354,6 +358,7 @@ export class AutoSolver {
         }
         logger.logView('✅ 自动完成结束');
         this.playing.onAnimationComplete();
+        this.running = false;
     }
 
     /** 检查是否可以赢（所有打开的牌都checkWin可以移到Foundation） */
@@ -424,10 +429,5 @@ export class AutoSolver {
             logger.logView('🎉 CheckWin: 所有打开的牌都可以移到Foundation，游戏可以获胜！');
         }
         return canWin;
-    }
-
-    /** 延迟工具函数 */
-    delay(ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }

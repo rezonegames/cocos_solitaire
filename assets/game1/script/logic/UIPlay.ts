@@ -30,14 +30,16 @@ const {ccclass, property} = _decorator;
 
 @ccclass('UIPlay')
 export class UIPlay extends VMParentView {
+
     protected data = {
         score: 0,
-        scoreDetail: {},
-        lastTotalTime: 0,
-        totalTime: 0,
         totalTimeString: '00:00',
         moves: 0,
+        levelId: ''
     }
+    scoreDetail = {}
+    lastTotalTime = 0
+    totalTime = 0
 
     @property(Node) dragNode: Node = null;
     @property(Node) stockButton: Node = null!;
@@ -88,8 +90,9 @@ export class UIPlay extends VMParentView {
     async initGame() {
         // 重置数据
         this.data.score = 0;
-        this.data.scoreDetail = {};
+        this.scoreDetail = {};
         this.data.moves = 0;
+        this.data.levelId = this.player.levelId;
 
         /** 初始化 piles 并标注类型，准备牌桌 */
         this.tableau = this.tableauRoots.map(n => {
@@ -123,7 +126,7 @@ export class UIPlay extends VMParentView {
 
         /** 生成扑克牌 */
         this.factory = new CardFactory(this.cardPrefab);
-        let deck = await this.factory.generateDeck(this.player.kind, this.player.level);
+        let deck = await this.factory.generateDeck(this.data.levelId);
 
         /** 下面是发牌逻辑：todo：重写 */
         deck.reverse();
@@ -180,19 +183,19 @@ export class UIPlay extends VMParentView {
 
     /** 更新游戏时常 */
     updateTime(deltaTime: number = 0) {
-        this.data.totalTime += deltaTime;
-        if (this.data.totalTime - this.data.lastTotalTime < 1) return;
-        const m = _.padStart(Math.floor(this.data.totalTime / 60).toString(), 2, '0');
-        const s = _.padStart(Math.floor(this.data.totalTime % 60).toString(), 2, '0');
+        this.totalTime += deltaTime;
+        if (this.totalTime - this.lastTotalTime < 1) return;
+        const m = _.padStart(Math.floor(this.totalTime / 60).toString(), 2, '0');
+        const s = _.padStart(Math.floor(this.totalTime % 60).toString(), 2, '0');
         this.data.totalTimeString = `${m}:${s}`;
-        this.data.lastTotalTime = this.data.totalTime;
+        this.lastTotalTime = this.totalTime;
     }
 
     /** 加分 */
     addScore(card: Card, score: number = 0) {
         const key = card.key;
-        if (!this.data.scoreDetail[key]) {
-            this.data.scoreDetail[key] = score;
+        if (!this.scoreDetail[key]) {
+            this.scoreDetail[key] = score;
             this.data.score += score;
             this.showScoreAnimation(card.node, score);
         }
@@ -489,11 +492,15 @@ export class UIPlay extends VMParentView {
                 if (targetPile.isFoundation) {
                     this.addScore(this.selectedStack[0].getComponent(Card), 10);
                 }
-                if (this.autoSolver.checkLose()) {
 
-                }
-                if (this.autoSolver.checkWin()) {
-                    this.autoSolver.autoComplete()
+                /** 检查是否完成，是否失败，如果正在运行，没必要再去检测！！ */
+                if (!this.autoSolver.isRunning()) {
+                    if(this.autoSolver.checkWin()) {
+                        this.autoSolver.autoComplete();
+                    }
+                    if (this.autoSolver.checkLose()) {
+                        uiManager.open(UIID.UIPause);
+                    }
                 }
             }
         } else {
@@ -709,12 +716,12 @@ export class UIPlay extends VMParentView {
         return true;
     }
 
-
+    /** 测试用的，可以自动跑 */
     async onAutoSolve() {
         if (this.autoSolver.isRunning()) {
-            this.autoSolver.stop();
+            this.autoSolver.testStop();
         } else {
-            await this.autoSolver.start();
+            await this.autoSolver.testStart();
         }
     }
 
@@ -734,7 +741,7 @@ export class UIPlay extends VMParentView {
     onAnimationComplete() {
         setTimeout(() => {
             logger.logView(`完成，准备下一关`);
-            uiManager.open(UIID.UIWin, this);
+            uiManager.open(UIID.UIWin, this.data);
         }, 1000);
     }
 

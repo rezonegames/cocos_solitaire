@@ -19,9 +19,9 @@ export class CardFactory {
 
     }
 
-    async generateDeck(kind: string, level: number): Promise<Node[]> {
+    async generateDeck(levelId: string): Promise<Node[]> {
         const globalData = VM.get<GlobalData>('globalData').$data;
-        let v = globalData.getLevelConfig(kind, level);
+        let v = globalData.getLevelConfig(levelId);
         // 初始化deck
         if (_.isEmpty(this.deck)) {
             for (const suit of suits) {

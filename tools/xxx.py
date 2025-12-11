@@ -31,4 +31,21 @@ def excel_to_json():
     write_language('loading-language', data)
     write_language('game1-language', data)
 
+
+    def write_level(sheet_name, data):
+        info = sheet_name.split("-")
+        bundle_name = info[0]
+        table = data.sheet_by_name(sheet_name)
+        nrows = table.nrows
+        level = {}
+        for i in range(1, nrows):
+            level_id = table.cell(i, 0).value
+            max_exp = table.cell(i, 1).value
+            coin = table.cell(i, 2).value
+            level[str(int(level_id))] = {'max_exp': int(max_exp), 'coin': int(coin)}
+        write_json(f'../assets/{bundle_name}/config/level.json', level)
+
+    write_level('game1-level', data)
+
+
 excel_to_json()
