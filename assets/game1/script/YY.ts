@@ -30,11 +30,19 @@ export function saveData(key: string, data: any) {
     storageManager.set(key, data);
 }
 export async function getData() {
-    storageManager.clear(); // todo：后面干掉
+    // storageManager.clear(); // todo：后面干掉
+    // 关卡
     const levelId = storageManager.get('levelId', '0_1');
     player.setLevelId(levelId);
+    // 背包
     const items = storageManager.get('items', JSON.stringify({coin: 1000,}));
     player.setItems(JSON.parse(items));
+    // 等级
+    player.level =storageManager.getNumber('level');
+    // 经验
+    player.exp = storageManager.getNumber('exp');
+    // 最大经验
+    player.maxExp = storageManager.getNumber('maxExp');
     logger.logConfig(`player/globalData done`);
 }
 
@@ -79,6 +87,9 @@ export class Player {
         await this.animateExpGain(exp);
         // 检查并处理升级
         await this.checkAndHandleLevelUp(globalData);
+        saveData('exp', this.exp);
+        saveData('maxExp', this.maxExp);
+        saveData('level', this.level);
     }
     private async animateExpGain(targetExp: number) {
         const startExp = this.exp;
@@ -110,7 +121,6 @@ export class Player {
             const newExpConfig = globalData.getExpConfig(this.level);
             if (newExpConfig) {
                 this.maxExp = newExpConfig.max_exp || newExpConfig;
-                saveData('level', this.level);
                 this.addItems({coin: newExpConfig.coin})
             }
             // 如果还有溢出经验，继续添加
@@ -120,7 +130,6 @@ export class Player {
         }
     }
 
-
     // 设置关卡等级
     setLevelId(levelId: string) {
         this.levelId = levelId;
@@ -129,7 +138,7 @@ export class Player {
         const globalData = VM.get<GlobalData>('globalData').$data;
         const [kind, subLevel] = this.levelId.split('_');
         const configList = globalData.levelConfig[kind];
-        const index = _.findIndex(configList, (item: any) => item.k === subLevel);
+        const index = _.findIndex(configList, (item: any) => item.k === Number(subLevel));
         let newSubLevel = configList[index + 1]?.k;
         let newKind = kind;
         if (!newSubLevel) {

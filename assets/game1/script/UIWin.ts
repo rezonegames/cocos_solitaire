@@ -11,7 +11,7 @@ const {ccclass, property} = _decorator;
 @ccclass('UIWin')
 export class UIWin extends VMParentView {
 
-    data: {
+    data = {
         score: 0,
         totalTimeString: '00:00',
         moves: 0,
@@ -34,7 +34,8 @@ export class UIWin extends VMParentView {
         this.data.bestTotalTimeString = bestRecord.totalTimeString;
         this.data.bestMoves = bestRecord.moves;
         this.player.exp += this.data.addExp;
-        this.player.addItems({coin: this.data.addCoin})
+        this.player.addItems({coin: this.data.addCoin});
+        this.player.setNextLevelId();
     }
 
     start() {
@@ -46,8 +47,7 @@ export class UIWin extends VMParentView {
 
     onClaim() {
         uiManager.open(UIID.UISelectGame);
-        uiManager.open(UIID.UILevelUp);
-        this.player.setNextLevelId();
+        uiManager.open(UIID.UILevelUp, {before: this.data.levelId, after: this.player.levelId});
     }
 
     onWatchADS() {

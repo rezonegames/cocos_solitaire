@@ -437,7 +437,7 @@ export class UIPlay extends VMParentView {
             const worldTarget = targetBaseWorld.clone().add(new Vec3(0, targetPile.isTableau ?
                 -Pile.tableauFaceUpOffset * i : 0, 0));
             tween(node)
-                .to(0.2, {worldPosition: worldTarget})
+                .to(0.1, {worldPosition: worldTarget})
                 .call(() => {
                     node.getComponent(Card).hide();
                     // 全部隐藏
@@ -495,10 +495,11 @@ export class UIPlay extends VMParentView {
 
                 /** 检查是否完成，是否失败，如果正在运行，没必要再去检测！！ */
                 if (!this.autoSolver.isRunning()) {
-                    if(this.autoSolver.checkWin()) {
+                    if (this.autoSolver.isGameWin()) {
+                        this.onGameWin();
+                    } else if (this.autoSolver.checkWin()) {
                         this.autoSolver.autoComplete();
-                    }
-                    if (this.autoSolver.checkLose()) {
+                    } else if (this.autoSolver.checkLose()) {
                         uiManager.open(UIID.UIPause);
                     }
                 }
@@ -719,9 +720,9 @@ export class UIPlay extends VMParentView {
     /** 测试用的，可以自动跑 */
     async onAutoSolve() {
         if (this.autoSolver.isRunning()) {
-            this.autoSolver.testStop();
+            this.autoSolver.stop();
         } else {
-            await this.autoSolver.testStart();
+            await this.autoSolver.start();
         }
     }
 
