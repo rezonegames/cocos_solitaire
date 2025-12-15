@@ -88,13 +88,13 @@ export class UIPlay extends VMParentView {
         if (canvas) {
             canvas.node.targetOff(this);
         }
-        
+
         // 清理定时器
         this.clearAllTimers();
-        
+
         // 清理tween动画
         this.clearAllTweens();
-        
+
         super.onDestroy();
     }
 
@@ -117,7 +117,7 @@ export class UIPlay extends VMParentView {
     async initGame() {
         // 重置状态
         this._isOperating = false;
-        
+
         // 重置数据
         this.data.score = 0;
         this.scoreDetail = {};
@@ -333,18 +333,18 @@ export class UIPlay extends VMParentView {
 
         this._isOperating = true;
         this.dragOffset = offset;
-        if(forceSelf) {
+        if (forceSelf) {
             this.selectedStack = [cardNode];
-        } else  {
+        } else {
             this.selectedStack = this.getStackFrom(cardNode);
         }
-        
+
         // 如果没有可移动的牌，重置状态
         if (this.selectedStack.length === 0) {
             this._isOperating = false;
             return [];
         }
-        
+
         this.dragCopies = [];
         this.selectedStack.forEach((node, idx) => {
             const copy = instantiate(node);
@@ -493,7 +493,11 @@ export class UIPlay extends VMParentView {
     /** 真正的修改card位置 */
     moveDone(fromPile: Pile, targetPile: Pile, isTest: boolean) {
         if (!isTest) {
-            if (fromPile === targetPile) {
+            /** magic或者回到原点 */
+            const backToOrigin = (fromPile === targetPile) &&
+                (this.selectedStack.length === 1) &&
+                (fromPile.isTopCard(this.selectedStack[0]));
+            if (backToOrigin) {
                 // 回到原来的位置！！
                 this.selectedStack.forEach((node, i) => {
                     node.getComponent(Card).show();

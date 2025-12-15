@@ -125,8 +125,37 @@ export class UIManager {
      * @param aniOverCallback 动画播放完成回调
      */
     private autoExecAnimation(uiView: UIView, aniName: string, aniOverCallback: () => void) {
-        // 暂时先省略动画播放的逻辑
-        aniOverCallback();
+        if (aniName === 'uiOpen' && uiView.showType === UIShowTypes.UIAddition) {
+            this.playPopupAnimation(uiView, aniOverCallback);
+        } else if (aniName === 'uiClose' && uiView.showType === UIShowTypes.UIAddition) {
+            this.playCloseAnimation(uiView, aniOverCallback);
+        } else {
+            aniOverCallback();
+        }
+    }
+
+    private playPopupAnimation(uiView: UIView, callback: () => void) {
+        const node = uiView.node;
+        node.setScale(0, 0, 1);
+        
+        import('cc').then(({ tween, Vec3 }) => {
+            tween(node)
+                .to(0.2, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'backOut' })
+                .to(0.1, { scale: new Vec3(1, 1, 1) }, { easing: 'sineOut' })
+                .call(callback)
+                .start();
+        });
+    }
+
+    private playCloseAnimation(uiView: UIView, callback: () => void) {
+        const node = uiView.node;
+        
+        import('cc').then(({ tween, Vec3 }) => {
+            tween(node)
+                .to(0.15, { scale: new Vec3(0, 0, 1) }, { easing: 'backIn' })
+                .call(callback)
+                .start();
+        });
     }
 
     /**
