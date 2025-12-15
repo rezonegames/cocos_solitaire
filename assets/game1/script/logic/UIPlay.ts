@@ -6,6 +6,7 @@ import {
     Node,
     Prefab,
     tween,
+    Tween,
     UIOpacity,
     UITransform,
     Vec2,
@@ -81,9 +82,35 @@ export class UIPlay extends VMParentView {
         canvas.node.on('size-changed', this.onScreenResize, this);
     }
 
-    async start() {
-        await this.initGame();
+    protected onDestroy() {
+        // 清理事件监听
+        const canvas = director.getScene()?.getComponent(Canvas);
+        if (canvas) {
+            canvas.node.targetOff(this);
+        }
+        
+        // 清理定时器
+        this.clearAllTimers();
+        
+        // 清理tween动画
+        this.clearAllTweens();
+        
+        super.onDestroy();
+    }
 
+    private clearAllTweens() {
+        // 清理所有正在运行的tween动画
+        if (this.dragCopies) {
+            this.dragCopies.forEach(copy => {
+                if (copy && copy.isValid) {
+                    Tween.stopAllByTarget(copy);
+                }
+            });
+        }
+    }
+
+    start() {
+        this.initGame();
     }
 
     /** 初始化游戏 */
@@ -293,14 +320,17 @@ export class UIPlay extends VMParentView {
     }
 
     // 拖拽相关方法
-    startDrag(cardNode: Node, offset: Vec3): Node[] {
+    startDrag(cardNode: Node, offset: Vec3, forceSelf: boolean = false): Node[] {
         if (this._isOperating) return [];
 
         this._isOperating = true;
         this.dragOffset = offset;
-        this.selectedStack = this.getStackFrom(cardNode);
+        if(forceSelf) {
+            this.selectedStack = [cardNode];
+        } else  {
+            this.selectedStack = this.getStackFrom(cardNode);
+        }
         this.dragCopies = [];
-
         this.selectedStack.forEach((node, idx) => {
             const copy = instantiate(node);
             copy.parent = this.dragNode;
@@ -308,10 +338,6 @@ export class UIPlay extends VMParentView {
             copy.setWorldPosition(worldPos);
             node.getComponent(Card)!.hide();
             this.dragCopies.push(copy);
-
-            // const card1 = node.getComponent(Card);
-            // const card2 = copy.getComponent(Card);
-            // logger.logView(`startDrag card1: ${card1.detail()} card2: ${card2.detail()}`);
         });
         return this.dragCopies;
     }
@@ -472,8 +498,10 @@ export class UIPlay extends VMParentView {
                 this.selectedStack.forEach((node, i) => {
                     targetPile.addCard(node);
                     node.getComponent(Card).show();
-                    // logger.logView(`moveDone fromPile: ${fromPile.name} targetPile: ${targetPile.name}`);
                 })
+
+                // from的pile重新设置位置
+                fromPile.repositionCards();
 
                 // 翻牌
                 if (flippedCard) {
@@ -727,7 +755,8 @@ export class UIPlay extends VMParentView {
     }
 
     onMagic() {
-        this.shuffleAndRetry()
+        // this.shuffleAndRetry()
+        this.autoSolver.saveLifeOneCard();
     }
 
     onPause() {
@@ -740,10 +769,23 @@ export class UIPlay extends VMParentView {
 
     /** 结算，claim+广告+自动进入下一关 */
     onAnimationComplete() {
-        setTimeout(() => {
+        if (this.completionTimer) {
+            clearTimeout(this.completionTimer);
+        }
+        this.completionTimer = setTimeout(() => {
             logger.logView(`完成，准备下一关`);
             uiManager.open(UIID.UIWin, this.data);
+            this.completionTimer = null;
         }, 1000);
+    }
+
+    private completionTimer: any = null;
+
+    private clearAllTimers() {
+        if (this.completionTimer) {
+            clearTimeout(this.completionTimer);
+            this.completionTimer = null;
+        }
     }
 
     async onHint() {

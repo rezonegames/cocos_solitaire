@@ -18,6 +18,8 @@ export class AutoSolver {
     actionDelay = 200;
     flipBeforeMoveDelay = 100;
     loseTimes = 0;
+    private timers: any[] = [];
+    private isExecuting = false;
 
     init(game: UIPlay) {
         this.playing = game;
@@ -29,7 +31,8 @@ export class AutoSolver {
     }
 
     async start() {
-        if (this.running) return;
+        if (this.running || this.isExecuting) return;
+        this.isExecuting = true;
         this.running = true;
         this.loseTimes = 0;
         logger.logView('AutoSolver: 开始自动求解');
@@ -79,11 +82,21 @@ export class AutoSolver {
             this.running = false;
             break;
         }
+        this.isExecuting = false;
     }
 
     stop() {
         this.running = false;
+        this.isExecuting = false;
+        this.clearAllTimers();
         logger.logView('AutoSolver: 停止求解');
+    }
+
+    private clearAllTimers() {
+        this.timers.forEach(timer => {
+            if (timer) clearTimeout(timer);
+        });
+        this.timers = [];
     }
 
     checkLose(): boolean {
@@ -260,7 +273,8 @@ export class AutoSolver {
     }
 
     async autoComplete(): Promise<void> {
-        if(this.isRunning()) return;
+        if(this.isRunning() || this.isExecuting) return;
+        this.isExecuting = true;
         this.running = true;
         logger.logView('🎯 开始自动完成游戏...');
         let moved = true;
@@ -304,6 +318,7 @@ export class AutoSolver {
         logger.logView('✅ 自动完成结束');
         this.playing.onAnimationComplete();
         this.running = false;
+        this.isExecuting = false;
     }
 
     checkWin(): boolean {
@@ -367,7 +382,173 @@ export class AutoSolver {
         return canWin;
     }
     
+    async saveLifeOneCard(): Promise<void> {
+        if (this.isExecuting) return;
+        this.isExecuting = true;
+
+        const listToCheck: Node[] = [];    // 所有未翻开的牌
+        const listToSave: Node[] = [];     // 所有未全翻开的牌列的下方，首张已翻开的牌
+        const listCanMoveCards: Node[] = []; // play区每列牌最下方的牌和help区可以移动的牌
+        const canMoveDicHolder: Pile[] = [];
+        const canMoveDicCard: Node[] = [];
+
+        // 遍历7列tableau
+        for (let i = 0; i < 7; i++) {
+            const holder = this.playing.tableau[i];
+            const allCards = holder.getAllCards();
+            const unopenCount = this.getUnopenCount(holder);
+            
+            if (unopenCount > 0) {
+                // 添加未翻开的牌到检查列表
+                for (let j = 0; j < unopenCount; j++) {
+                    listToCheck.push(allCards[j]);
+                }
+                // 添加第一张翻开的牌到保存列表
+                if (allCards.length > unopenCount) {
+                    listToSave.push(allCards[unopenCount]);
+                }
+            }
+            
+            // 添加每列最下方的牌
+            if (allCards.length > 0) {
+                listCanMoveCards.push(allCards[allCards.length - 1]);
+            }
+        }
+        
+        // 添加waste区可以移动的牌
+        const wasteCards = this.playing.waste.getAllCards();
+        listCanMoveCards.push(...wasteCards);
+
+        // 检查每张未翻开的牌
+        for (const cardNode of listToCheck) {
+            const card = cardNode.getComponent(Card);
+            if (card.isFaceUp) continue;
+            
+            // 检查能否移动到tableau
+            for (const holder of this.playing.tableau) {
+                if (this.checkCanMoveInPlay(holder, card)) {
+                    // 检查是否满足翻开此card后，下一步可以新翻开一张牌
+                    for (const item of listToSave) {
+                        const itemCard = item.getComponent(Card);
+                        const itemHolder = item.parent.getComponent(Pile);
+                        const cardHolder = cardNode.parent.getComponent(Pile);
+                        
+                        const itemHolderUnopenCount = this.getUnopenCount(itemHolder);
+                        
+                        if ((itemHolderUnopenCount > 1 || (cardHolder !== itemHolder && itemHolderUnopenCount > 0)) 
+                            && this.checkCanMoveInPlay(card, itemCard)) {
+                            await this.doSaveLife(cardNode, holder);
+                            this.isExecuting = false;
+                            return;
+                        }
+                    }
+                    
+                    canMoveDicHolder.push(holder);
+                    canMoveDicCard.push(cardNode);
+                    break;
+                }
+            }
+            
+            // 检查能否移动到foundation
+            for (const holder of this.playing.foundation) {
+                if (this.checkCanMoveInResult(holder, card)) {
+                    canMoveDicHolder.push(holder);
+                    canMoveDicCard.push(cardNode);
+                    break;
+                }
+            }
+        }
+
+        // 选择最小值的牌进行移动
+        let tempCard: Node | null = null;
+        let tempHolder: Pile | null = null;
+        
+        for (let i = 0; i < canMoveDicCard.length; i++) {
+            const cardNode = canMoveDicCard[i];
+            const card = cardNode.getComponent(Card);
+            
+            if (!tempCard || card.rank < tempCard.getComponent(Card).rank) {
+                tempCard = cardNode;
+                tempHolder = canMoveDicHolder[i];
+            }
+        }
+        
+        if (tempCard && tempHolder) {
+            await this.doSaveLife(tempCard, tempHolder);
+        }
+        
+        this.isExecuting = false;
+    }
+
+    private async doSaveLife(cardNode: Node, targetPile: Pile): Promise<void> {
+        const card = cardNode.getComponent(Card);
+        logger.logView(`SaveLife: 翻开并移动 ${card.detail()} 到 ${targetPile.node.name}`);
+        
+        // 翻开这张牌
+        card.flipFaceUp();
+        
+        await this.delay(this.flipBeforeMoveDelay);
+        
+        // 直接指定只移动这一张牌
+        const fromPile = cardNode.parent.getComponent(Pile);
+        const dragCopies = this.playing.startDrag(cardNode, new Vec3(), true);
+        await this.delay(50);
+        this.playing.moveStack(fromPile, dragCopies, targetPile);
+    }
+
+    private getUnopenCount(pile: Pile): number {
+        const allCards = pile.getAllCards();
+        let count = 0;
+        for (const cardNode of allCards) {
+            const card = cardNode.getComponent(Card);
+            if (!card.isFaceUp) {
+                count++;
+            } else {
+                break;
+            }
+        }
+        return count;
+    }
+
+    private getCardIndexInHolder(cardNode: Node): number {
+        const pile = cardNode.parent.getComponent(Pile);
+        return pile.getCardIndex(cardNode);
+    }
+
+    private checkCanMoveInPlay(targetPile: Pile, card: Card): boolean;
+    private checkCanMoveInPlay(card: Card, targetCard: Card): boolean;
+    private checkCanMoveInPlay(arg1: Pile | Card, arg2: Card): boolean {
+        if (arg1 instanceof Pile) {
+            // 检查能否移动到tableau pile
+            return this.playing.canPlaceToTableau(arg2, arg1);
+        } else {
+            // 检查两张牌能否叠放（tableau规则）
+            const movingColor = arg2.getColor();
+            const targetColor = arg1.getColor();
+            return targetColor !== movingColor && arg1.rank === arg2.rank + 1;
+        }
+    }
+
+    private checkCanMoveInResult(targetPile: Pile, card: Card): boolean;
+    private checkCanMoveInResult(card: Card, targetCard: Card): boolean;
+    private checkCanMoveInResult(arg1: Pile | Card, arg2: Card): boolean {
+        if (arg1 instanceof Pile) {
+            // 检查能否移动到foundation pile
+            return this.playing.canPlaceToFoundation(arg2, arg1);
+        } else {
+            // 检查两张牌能否叠放（foundation规则）
+            return arg1.suit === arg2.suit && arg1.rank + 1 === arg2.rank;
+        }
+    }
+
     private delay(ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise(resolve => {
+            const timer = setTimeout(() => {
+                const index = this.timers.indexOf(timer);
+                if (index > -1) this.timers.splice(index, 1);
+                resolve();
+            }, ms);
+            this.timers.push(timer);
+        });
     }
 }

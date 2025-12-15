@@ -145,7 +145,7 @@ export class NetNode {
                 }
             }
             // 如果还有等待返回的请求，启动网络请求层
-            this.updateNetTips(NetTipsType.Requesting, this.request.length > 0);
+            this.updateNetTips(NetTipsType.Requesting, this._requests.length > 0);
         }
     }
 
@@ -182,7 +182,7 @@ export class NetNode {
         }
 
         let listeners = this._listener[rspCmd];
-        if (null != listeners) {
+        if (listeners && listeners.length > 0) {
             for (const rsp of listeners) {
                 logger.logNet(`NetNode execute listener cmd ${rspCmd}`);
                 this._callbackExecuter!(rsp, msg);
@@ -373,12 +373,15 @@ export class NetNode {
     protected clearTimer() {
         if (this._receiveMsgTimer !== null) {
             clearTimeout(this._receiveMsgTimer);
+            this._receiveMsgTimer = null;
         }
         if (this._keepAliveTimer !== null) {
             clearTimeout(this._keepAliveTimer);
+            this._keepAliveTimer = null;
         }
         if (this._reconnectTimer !== null) {
             clearTimeout(this._reconnectTimer);
+            this._reconnectTimer = null;
         }
     }
 

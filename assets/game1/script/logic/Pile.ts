@@ -17,6 +17,10 @@ export class Pile extends Component {
         this.node.on(Node.EventType.TOUCH_END, this.onClick, this);
     }
 
+    onDestroy() {
+        this.node.targetOff(this);
+    }
+
     /** 获取实际可见的牌（排除被hide的牌） */
     getVisibleCards(): Node[] {
         return this.node.children.filter(c => c.getComponent(Card)?.isShow());
@@ -167,5 +171,32 @@ export class Pile extends Component {
     /** 遍历所有牌（用于替代直接访问node.children） */
     forEachCard(callback: (cardNode: Node, index: number) => void) {
         this.getAllCards().forEach(callback);
+    }
+
+    /** 重新设置当前所有children的位置 */
+    repositionCards() {
+        const children = this.getAllCards();
+        
+        if (this.isWaste) {
+            for (let i = 0; i < children.length; i++) {
+                const c = children[i];
+                const x = this.computeWasteCardX(c);
+                c.setPosition(x, 0);
+                c.setSiblingIndex(i);
+            }
+        } else if (this.isFoundation || this.isStock) {
+            for (let i = 0; i < children.length; i++) {
+                const c = children[i];
+                c.setPosition(0, 0);
+                c.setSiblingIndex(i);
+            }
+        } else if (this.isTableau) {
+            for (let i = 0; i < children.length; i++) {
+                const c = children[i];
+                const y = this.computeTableauCardY(c);
+                c.setPosition(0, y);
+                c.setSiblingIndex(i);
+            }
+        }
     }
 }

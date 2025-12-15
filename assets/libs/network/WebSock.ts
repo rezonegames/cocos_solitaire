@@ -30,10 +30,10 @@ export class WebSock implements ISocket {
         if(options.url) {
             url = options.url;
         } else {
-            let ip = options.ip;
+            let host = options.host || options.ip;
             let port = options.port;
-            let protocol = options.protocol;
-            url = `${protocol}://${ip}:${port}`;    
+            let protocol = options.protocol || 'ws';
+            url = `${protocol}://${host}:${port}`;    
         }
 
         this._ws = new WebSocket(url);

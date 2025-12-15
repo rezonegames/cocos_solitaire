@@ -1,7 +1,8 @@
 import {director, Node, isValid, view, UITransform, instantiate} from "cc";
 import {ProgressCallback, resLoader} from "../res/ResLoader";
 import {UIView, UIShowTypes} from "./UIView";
-import {logger} from "../log/Logger"
+import {logger} from "../log/Logger";
+import {loadingManager} from "./LoadingManager";
 
 /**
  * UIManager界面管理类
@@ -253,7 +254,7 @@ export class UIManager {
             backGround.on(Node.EventType.TOUCH_START, (event: any) => {
                 event.propagationStopped = true;
                 this.close(uiView);
-            }, backGround);
+            }, this);
         }
 
         // 添加到场景中
@@ -316,8 +317,15 @@ export class UIManager {
         }
 
         this.isOpening = true;
+        
+        // 显示loading
+        loadingManager.show();
+        
         // 预加载资源，并在资源加载完成后自动打开界面
         this.getOrCreateUI(uiId, progressCallback, (uiView: UIView | null): void => {
+            // 隐藏loading
+            loadingManager.hide();
+            
             // 如果界面已经被关闭或创建失败
             if (uiInfo.isClose || null == uiView) {
                 logger.logView(`getOrCreateUI ${uiId} faile!
@@ -414,6 +422,8 @@ export class UIManager {
                 uiView!.node.removeFromParent();
                 logger.logView(`uiView removeFromParent ${uiInfo!.uiId}`);
             } else {
+                // 清理事件监听
+                uiView!.node.off(Node.EventType.TOUCH_START);
                 uiView!.releaseAssets();
                 uiView!.node.destroy();
                 logger.logView(`uiView destroy ${uiInfo!.uiId}`);
