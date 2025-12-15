@@ -46,7 +46,11 @@ export class Pile extends Component {
         }
     }
 
-    isTopCard(node: Node) {
+    isTopCard(node: Node, checkUnVisible: boolean = false): boolean {
+        if (checkUnVisible) {
+            const c = this.getAllCards();
+            return c.indexOf(node) === c.length - 1;
+        }
         return node === this.getTopCard();
     }
 
@@ -176,7 +180,7 @@ export class Pile extends Component {
     /** 重新设置当前所有children的位置 */
     repositionCards() {
         const children = this.getAllCards();
-        
+
         if (this.isWaste) {
             for (let i = 0; i < children.length; i++) {
                 const c = children[i];

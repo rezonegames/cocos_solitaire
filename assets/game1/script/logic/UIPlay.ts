@@ -494,9 +494,10 @@ export class UIPlay extends VMParentView {
     moveDone(fromPile: Pile, targetPile: Pile, isTest: boolean) {
         if (!isTest) {
             /** magic或者回到原点 */
+            const v = fromPile.isTopCard(this.selectedStack[0], true)
             const backToOrigin = (fromPile === targetPile) &&
-                (this.selectedStack.length === 1) &&
-                (fromPile.isTopCard(this.selectedStack[0]));
+                (this.selectedStack.length === 1 ? v : true);
+
             if (backToOrigin) {
                 // 回到原来的位置！！
                 this.selectedStack.forEach((node, i) => {

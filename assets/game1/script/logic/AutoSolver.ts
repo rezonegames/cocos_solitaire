@@ -483,17 +483,14 @@ export class AutoSolver {
     private async doSaveLife(cardNode: Node, targetPile: Pile): Promise<void> {
         const card = cardNode.getComponent(Card);
         logger.logView(`SaveLife: 翻开并移动 ${card.detail()} 到 ${targetPile.node.name}`);
-        
         // 翻开这张牌
         card.flipFaceUp();
-        
         await this.delay(this.flipBeforeMoveDelay);
-        
         // 直接指定只移动这一张牌
         const fromPile = cardNode.parent.getComponent(Pile);
         const dragCopies = this.playing.startDrag(cardNode, new Vec3(), true);
         await this.delay(50);
-        this.playing.moveStack(fromPile, dragCopies, targetPile);
+        this.playing.moveStack(fromPile, dragCopies, targetPile, false);
     }
 
     private getUnopenCount(pile: Pile): number {

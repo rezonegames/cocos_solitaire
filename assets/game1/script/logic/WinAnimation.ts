@@ -63,13 +63,13 @@ export class WinAnimation {
             tween(card)
                 .delay(delay)
                 .parallel(
-                    tween().to(1.2, {worldPosition: mid1}),
-                    tween().to(0.8, {scale: new Vec3(0.8, 0.8, 1)})
+                    tween(card).to(1.2, {worldPosition: mid1}),
+                    tween(card).to(0.8, {scale: new Vec3(0.8, 0.8, 1)})
                 )
                 .to(1.2, {worldPosition: mid2})
                 .parallel(
-                    tween().to(1.2, {worldPosition: end}),
-                    tween().to(1.0, {scale: new Vec3(0.6, 0.6, 1)})
+                    tween(card).to(1.2, {worldPosition: end}),
+                    tween(card).to(1.0, {scale: new Vec3(0.6, 0.6, 1)})
                 )
                 .call(() => {
                     completedCount++;

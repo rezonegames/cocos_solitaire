@@ -33,8 +33,8 @@ export class UIWin extends VMParentView {
         this.data.bestScore = bestRecord.score;
         this.data.bestTotalTimeString = bestRecord.totalTimeString;
         this.data.bestMoves = bestRecord.moves;
-        this.player.exp += this.data.addExp;
         this.player.addItems({coin: this.data.addCoin});
+        this.player.addExp(this.data.addExp);
         this.player.setNextLevelId();
     }
 
