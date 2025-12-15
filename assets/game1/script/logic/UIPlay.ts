@@ -115,6 +115,9 @@ export class UIPlay extends VMParentView {
 
     /** 初始化游戏 */
     async initGame() {
+        // 重置状态
+        this._isOperating = false;
+        
         // 重置数据
         this.data.score = 0;
         this.scoreDetail = {};
@@ -293,9 +296,11 @@ export class UIPlay extends VMParentView {
             if (!last) {
                 return;
             }
+            this._isOperating = true;
             const cardComp = last.getComponent(Card)!;
             this.waste.addCard(cardNode);
             cardComp.flipFaceUp();
+            this._isOperating = false;
             return;
         } else {
             const fromPile = cardNode.parent.getComponent(Pile);
@@ -321,7 +326,10 @@ export class UIPlay extends VMParentView {
 
     // 拖拽相关方法
     startDrag(cardNode: Node, offset: Vec3, forceSelf: boolean = false): Node[] {
-        if (this._isOperating) return [];
+        if (this._isOperating) {
+            logger.logView('startDrag: 已在操作中，忽略');
+            return [];
+        }
 
         this._isOperating = true;
         this.dragOffset = offset;
@@ -330,6 +338,13 @@ export class UIPlay extends VMParentView {
         } else  {
             this.selectedStack = this.getStackFrom(cardNode);
         }
+        
+        // 如果没有可移动的牌，重置状态
+        if (this.selectedStack.length === 0) {
+            this._isOperating = false;
+            return [];
+        }
+        
         this.dragCopies = [];
         this.selectedStack.forEach((node, idx) => {
             const copy = instantiate(node);
