@@ -1,4 +1,4 @@
-import { Enum, _decorator } from "cc";
+import { Enum, _decorator, Widget, Node, UITransform } from "cc";
 import {ResKeeper} from "../res/ResKeeper";
 
 /**
@@ -48,6 +48,11 @@ export class UIView extends ResKeeper {
     /**  静态变量，用于区分相同界面的不同实例 */
     private static uiIndex: number = 0;
 
+    onLoad() {
+        // 自动设置根节点适配
+        this.setFullScreenAdapter(this.node);
+    }
+
     /********************** UI的回调 ***********************/
     /**
      * 当界面被创建时回调，生命周期内只调用
@@ -87,5 +92,49 @@ export class UIView extends ResKeeper {
      */
     public onTop(preID: number, ...args : any): void {
 
+    }
+
+    /**
+     * 设置节点全屏适配
+     * @param node 需要适配的节点
+     */
+    protected setFullScreenAdapter(node: Node) {
+        const widget = node.getComponent(Widget) || node.addComponent(Widget);
+        widget.isAlignLeft = widget.isAlignRight = widget.isAlignTop = widget.isAlignBottom = true;
+        widget.left = widget.right = widget.top = widget.bottom = 0;
+        widget.alignMode = 2; // ALWAYS
+        widget.enabled = true;
+    }
+
+    /**
+     * 设置节点居中适配
+     * @param node 需要适配的节点
+     * @param width 宽度（可选）
+     * @param height 高度（可选）
+     */
+    protected setCenterAdapter(node: Node, width?: number, height?: number) {
+        const widget = node.getComponent(Widget) || node.addComponent(Widget);
+        widget.isAlignHorizontalCenter = true;
+        widget.isAlignVerticalCenter = true;
+        widget.horizontalCenter = 0;
+        widget.verticalCenter = 0;
+        widget.alignMode = 2; // ALWAYS
+        
+        if (width !== undefined) {
+            widget.isAlignLeft = widget.isAlignRight = false;
+            const transform = node.getComponent(UITransform);
+            if (transform) {
+                transform.width = width;
+            }
+        }
+        if (height !== undefined) {
+            widget.isAlignTop = widget.isAlignBottom = false;
+            const transform = node.getComponent(UITransform);
+            if (transform) {
+                transform.height = height;
+            }
+        }
+        
+        widget.enabled = true;
     }
 }
