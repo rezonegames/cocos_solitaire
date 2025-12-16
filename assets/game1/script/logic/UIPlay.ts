@@ -776,6 +776,10 @@ export class UIPlay extends VMParentView {
 
     onMagic() {
         // this.shuffleAndRetry()
+        if (!this.player.addItems({'coin': -100})) {
+            // uiManager.open(UIID.UIMagic, this);
+            return;
+        }
         this.autoSolver.saveLifeOneCard();
     }
 

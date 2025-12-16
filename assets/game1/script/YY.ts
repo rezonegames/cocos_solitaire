@@ -160,11 +160,17 @@ export class Player {
         })
         logger.logModel(`items: ${JSON.stringify(this.items)}`)
     }
-    addItems(items: any) {
+    addItems(items: any): boolean {
         _.forEach(items, (v, k) => {
+            if(this.items[k] + v < 0) {
+                // todo：fake
+                this.items[k] += 1000;
+                return false
+            }
             this.items[k] += v;
         })
         saveData('items', this.items);
+        return true;
     }
     
     // 设置最好记录
