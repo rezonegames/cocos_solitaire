@@ -1,6 +1,6 @@
 {
   "__type__": "cc.AutoAtlas",
-  "_name": "main_canvas_atlas_1",
+  "_name": "main_canvas_atlas",
   "_objFlags": 0,
   "_native": "",
   "maxWidth": 2048,

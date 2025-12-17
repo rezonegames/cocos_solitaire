@@ -5,7 +5,6 @@ import {HotUpdate} from "db://assets/libs/hotupate/HotUpdate";
 import {HotUpdateWeb} from "db://assets/libs/hotupate/HotUpdateWeb";
 import VMParent from "db://assets/libs/modelview/VMParent";
 import {resLoader} from "db://assets/libs/res/ResLoader";
-import {logger} from "db://assets/libs/log/Logger";
 import {LanguageLabel} from "db://assets/libs/language/LanguageLabel";
 
 
@@ -35,7 +34,7 @@ export class Loading extends VMParent {
         LanguageLabel.defaultFontId = `alk-life-webfont`;
         //
         const language = storageManager.get('language', 'en');
-        languageManager.setLanguage('loading', language).then((_) => {
+        languageManager.setLanguage('', language).then((_) => {
             // 开始热梗
             if (sys.isNative) {
                 this.addComponent(HotUpdate);

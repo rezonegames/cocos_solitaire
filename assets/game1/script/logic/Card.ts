@@ -9,6 +9,9 @@ const {ccclass, property} = _decorator;
 // 位置不变，否则key就变了，从小到大 方块，草花，黑桃，红心
 export const suits = ['fk', 'mh', 'hx', 'ht']
 
+// 图集缓存
+let cardAtlasCache: SpriteAtlas | null = null;
+
 @ccclass('Card')
 export class Card extends Component {
     @property(Node) flipNode: Node = null!;
@@ -55,22 +58,30 @@ export class Card extends Component {
     }
 
     async loadSprites() {
-        const atlas = await resLoader.loadAsync(bundleName, 'texture/card/card_atlas', SpriteAtlas);
+        if (!cardAtlasCache) {
+            try {
+                cardAtlasCache = await resLoader.loadAsync(bundleName, 'texture/card/card_atlas', SpriteAtlas);
+            } catch (e) {
+                cardAtlasCache = null;
+            }
+        }
         
-        this.suitSprite.spriteFrame = atlas.getSpriteFrame(`${this.suit}_small`);
-        this.suitBackSprite.spriteFrame = atlas.getSpriteFrame(this.suit);
-        this.rankSprite.spriteFrame = atlas.getSpriteFrame(`${this.rank}_${this.getColor()}`);
-        /*
-                const suitPath = `${path}/${this.suit}_small/spriteFrame`;
-        this.suitSprite.spriteFrame = await this.loadSF(suitPath);
-
-        const suitBackPath = `${path}/${this.suit}/spriteFrame`;
-        this.suitBackSprite.spriteFrame = await this.loadSF(suitBackPath);
-
-        const rankPath = `${path}/${this.rank}_${this.getColor()}/spriteFrame`;
-        this.rankSprite.spriteFrame = await this.loadSF(rankPath);
-
-         */
+        // 尝试从图集获取
+        if (cardAtlasCache) {
+            const suitFrame = cardAtlasCache.getSpriteFrame(`${this.suit}_small`);
+            if (suitFrame) {
+                this.suitSprite.spriteFrame = suitFrame;
+                this.suitBackSprite.spriteFrame = cardAtlasCache.getSpriteFrame(this.suit);
+                this.rankSprite.spriteFrame = cardAtlasCache.getSpriteFrame(`${this.rank}_${this.getColor()}`);
+                return;
+            }
+        }
+        
+        // 降级为单图加载
+        const path = 'texture/card';
+        this.suitSprite.spriteFrame = await resLoader.loadAsync(bundleName, `${path}/${this.suit}_small/spriteFrame`, SpriteFrame);
+        this.suitBackSprite.spriteFrame = await resLoader.loadAsync(bundleName, `${path}/${this.suit}/spriteFrame`, SpriteFrame);
+        this.rankSprite.spriteFrame = await resLoader.loadAsync(bundleName, `${path}/${this.rank}_${this.getColor()}/spriteFrame`, SpriteFrame);
     }
 
     rankToKey() {

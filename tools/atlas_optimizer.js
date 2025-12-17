@@ -51,9 +51,8 @@ class AtlasOptimizer {
     /**
      * 扫描目录并自动创建图集
      * @param {string} dirPath 目录路径
-     * @param {number} maxImages 每个图集最大图片数量
      */
-    autoCreateAtlas(dirPath, maxImages = 50) {
+    autoCreateAtlas(dirPath) {
         const files = fs.readdirSync(dirPath);
         const imageFiles = files.filter(file => 
             (file.endsWith('.png') || file.endsWith('.jpg')) && 
@@ -66,29 +65,10 @@ class AtlasOptimizer {
         }
 
         const dirName = path.basename(dirPath);
-        
-        // 如果图片数量少于等于maxImages，创建一个图集
-        if (imageFiles.length <= maxImages) {
-            this.createAtlasConfig(`${dirName}_atlas`, imageFiles, dirPath);
-        } else {
-            // 如果图片太多，分成多个图集
-            const chunks = this.chunkArray(imageFiles, maxImages);
-            chunks.forEach((chunk, index) => {
-                this.createAtlasConfig(`${dirName}_atlas_${index + 1}`, chunk, dirPath);
-            });
-        }
+        this.createAtlasConfig(`${dirName}_atlas`, imageFiles, dirPath);
     }
 
-    /**
-     * 将数组分块
-     */
-    chunkArray(array, chunkSize) {
-        const chunks = [];
-        for (let i = 0; i < array.length; i += chunkSize) {
-            chunks.push(array.slice(i, i + chunkSize));
-        }
-        return chunks;
-    }
+
 
     /**
      * 批量处理所有纹理目录

@@ -21,7 +21,7 @@ export class HotUpdateWeb extends Component {
         // "script",
         // "texture",
         // "anim",
-        "prefab",
+        // "prefab",
         // "material",
         // "effect"
     ];

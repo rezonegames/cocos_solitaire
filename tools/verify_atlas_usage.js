@@ -146,7 +146,7 @@ class AtlasUsageVerifier {
             recommendations: this.generateRecommendations()
         };
 
-        const reportPath = path.join(this.projectPath, 'atlas_usage_report.json');
+        const reportPath = path.join(__dirname, 'atlas_usage_report.json');
         fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
         
         console.log(`\n📋 Detailed report saved to: ${reportPath}`);
