@@ -1,0 +1,20 @@
+{
+  "__type__": "cc.SpriteAtlas",
+  "_name": "pop_daily_bonus_atlas",
+  "_objFlags": 0,
+  "_native": "",
+  "_textures": {},
+  "_textureFilenames": [
+    "daily_button_ads.png",
+    "daily_coin.png",
+    "daily_item_bg01.png",
+    "daily_item_bg02.png",
+    "daily_item_zhezhao.png",
+    "daily_lihe01..png",
+    "daily_lihe02.png",
+    "day7_bg2.png",
+    "greybtn.png",
+    "jiaobiao.png",
+    "starchest_tc_button_lan.png"
+  ]
+}

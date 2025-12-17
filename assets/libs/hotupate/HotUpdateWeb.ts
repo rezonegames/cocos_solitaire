@@ -17,13 +17,13 @@ export class HotUpdateWeb extends Component {
 
     private _taskList: string[] = [
         "scene",
-        "config",
-        "script",
-        "texture",
-        "anim",
+        // "config",
+        // "script",
+        // "texture",
+        // "anim",
         "prefab",
-        "material",
-        "effect"
+        // "material",
+        // "effect"
     ];
     private _total = this._taskList.length;
 

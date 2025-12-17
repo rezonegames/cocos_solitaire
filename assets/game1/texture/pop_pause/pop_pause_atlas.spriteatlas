@@ -1,0 +1,16 @@
+{
+  "__type__": "cc.SpriteAtlas",
+  "_name": "pop_pause_atlas",
+  "_objFlags": 0,
+  "_native": "",
+  "_textures": {},
+  "_textureFilenames": [
+    "close.png",
+    "pause_button.png",
+    "pause_icon_home.png",
+    "pause_icon_newdeal.png",
+    "pause_icon_random.png",
+    "pause_icon_replay.png",
+    "tc_bg.png"
+  ]
+}
