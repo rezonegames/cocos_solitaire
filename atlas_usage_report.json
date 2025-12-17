@@ -1,0 +1,91 @@
+{
+  "summary": {
+    "atlasUsages": 9,
+    "singleImageUsages": 5,
+    "migrationProgress": 64.28571428571429
+  },
+  "atlasUsages": [
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/card/card_atlas"
+    },
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/main_canvas/main_ui_atlas"
+    },
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/play_ui/play_ui_atlas"
+    },
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/pop_daily_bonus/pop_daily_bonus_atlas"
+    },
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/pop_levelup/pop_levelup_atlas"
+    },
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/pop_pause/pop_pause_atlas"
+    },
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/pop_win/pop_win_atlas"
+    },
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/touxiang/touxiang_atlas"
+    },
+    {
+      "file": "assets/game1/script/logic/Card.ts",
+      "type": "script",
+      "usage": "texture/card/card_atlas"
+    }
+  ],
+  "singleImageUsages": [
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/main_canvas/main_ui_atlas\",\n    \n    "
+    },
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/play_ui/play_ui_atlas\",\n    \n    "
+    },
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/pop_daily_bonus/pop_daily_bonus_atlas\",\n    POP_LEVELUP: \"texture"
+    },
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/pop_pause/pop_pause_atlas\",\n    POP_WIN: \"texture"
+    },
+    {
+      "file": "assets/game1/script/AtlasPath.ts",
+      "type": "script",
+      "usage": "texture/touxiang/touxiang_atlas\"\n};\n\n"
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "urgent",
+      "message": "5 files still use single images and need to be updated to use atlases."
+    },
+    {
+      "type": "success",
+      "message": "9 files are already using atlases. Good job!"
+    }
+  ]
+}

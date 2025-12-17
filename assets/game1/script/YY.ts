@@ -7,8 +7,6 @@ import {logger} from "db://assets/libs/log/Logger";
 import {languageManager} from "db://assets/libs/language/Language";
 import {resLoader} from "db://assets/libs/res/ResLoader";
 import {delay} from "db://assets/libs/utils/Utils";
-import {AtlasPath} from "./AtlasPath";
-import {atlasManager} from "db://assets/libs/res/AtlasManager";
 
 /** UI类型 */
 export enum UIID {
@@ -265,15 +263,6 @@ export class GameInstance {
         logger.logConfig(`game language done`);
 
         await getData();
-
-        // const atlases = [
-        //     AtlasPath.MAIN_UI,
-        //     AtlasPath.CARD,
-        //     AtlasPath.PLAY_UI
-        // ];
-        //
-        // await atlasManager.loadAtlases(atlases);
-        // console.log("Login atlases loaded successfully");
 
         const bundle = bundleName;
         uiManager.initUIConf({

@@ -1,8 +1,8 @@
-import {_decorator, Component, Node, Sprite, SpriteFrame, tween, Vec3, UIOpacity, UITransform} from 'cc';
+import {_decorator, Component, Node, Sprite, SpriteFrame, tween, Vec3, UIOpacity, UITransform, SpriteAtlas} from 'cc';
 import _ from 'lodash-es';
 import {bundleName} from "db://assets/game1/script/YY";
-import {ResUtil} from "db://assets/libs/res/ResUtil";
 import {logger} from "db://assets/libs/log/Logger";
+import {resLoader} from "db://assets/libs/res/ResLoader";
 
 const {ccclass, property} = _decorator;
 
@@ -55,10 +55,13 @@ export class Card extends Component {
     }
 
     async loadSprites() {
-        // 资源路径
-        const path = 'texture/card'
-
-        const suitPath = `${path}/${this.suit}_small/spriteFrame`;
+        const atlas = await resLoader.loadAsync(bundleName, 'texture/card/card_atlas', SpriteAtlas);
+        
+        this.suitSprite.spriteFrame = atlas.getSpriteFrame(`${this.suit}_small`);
+        this.suitBackSprite.spriteFrame = atlas.getSpriteFrame(this.suit);
+        this.rankSprite.spriteFrame = atlas.getSpriteFrame(`${this.rank}_${this.getColor()}`);
+        /*
+                const suitPath = `${path}/${this.suit}_small/spriteFrame`;
         this.suitSprite.spriteFrame = await this.loadSF(suitPath);
 
         const suitBackPath = `${path}/${this.suit}/spriteFrame`;
@@ -66,15 +69,8 @@ export class Card extends Component {
 
         const rankPath = `${path}/${this.rank}_${this.getColor()}/spriteFrame`;
         this.rankSprite.spriteFrame = await this.loadSF(rankPath);
-    }
 
-    loadSF(path: string): Promise<SpriteFrame> {
-        return new Promise((resolve, reject) => {
-            ResUtil.load(this.node, bundleName, path, SpriteFrame, (err, sf) => {
-                if (err) reject(err);
-                else resolve(sf);
-            });
-        });
+         */
     }
 
     rankToKey() {
