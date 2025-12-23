@@ -13,6 +13,8 @@
 # 1. 在 Cocos Creator 中构建微信小游戏
 # 2. 手动上传资源
 rsync -avz ./build/wechatgame/remote/ root@saisi-dev:/var/www/html/cocos-solitaire/wechat/remote/
-# 3. 在微信开发者工具中打开项目
+# 3.删除remote资源
+rm -rf ./build/wechatgame/remote
+# 4. 在微信开发者工具中打开项目
 # 打开目录: ./build/wechatgame
 ```
