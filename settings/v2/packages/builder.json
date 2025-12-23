@@ -10,13 +10,13 @@
         "configs": {
           "native": {
             "preferredOptions": {
-              "isRemote": false,
+              "isRemote": true,
               "compressionType": "merge_dep"
             }
           },
           "web": {
             "preferredOptions": {
-              "isRemote": false,
+              "isRemote": true,
               "compressionType": "merge_dep"
             },
             "fallbackOptions": {
@@ -25,10 +25,16 @@
           },
           "miniGame": {
             "fallbackOptions": {
-              "isRemote": false,
+              "isRemote": true,
               "compressionType": "merge_dep"
             },
-            "configMode": "fallback"
+            "configMode": "fallback",
+            "overwriteSettings": {
+              "wechatgame": {
+                "isRemote": false,
+                "compressionType": "subpackage"
+              }
+            }
           }
         }
       }

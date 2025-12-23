@@ -129,6 +129,25 @@ export default class ResLoader {
     }
 
     /**
+     * 检查目录是否已存在（已加载）
+     * @param bundleName bundle名称
+     * @param dir 目录路径
+     * @param callback 回调函数
+     */
+    public checkDirExists(bundleName: string, dir: string, callback: (exists: boolean) => void): void {
+        const bundle = assetManager.getBundle(bundleName);
+        if (!bundle) {
+            // bundle 不存在，需要加载
+            callback(false);
+            return;
+        }
+        
+        // 检查目录下是否有资源
+        const infos = bundle.getDirWithPath(dir);
+        callback(infos && infos.length > 0);
+    }
+
+    /**
      * 加载scene
      * @param bundleName
      * @param scenePath

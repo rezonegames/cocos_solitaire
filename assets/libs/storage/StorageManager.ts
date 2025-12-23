@@ -106,7 +106,7 @@ class StorageManager {
             str = this.iss.decrypt(str);
         }
 
-        if (null === str) {
+        if (!str) {
             return defaultValue;
         }
         return str;

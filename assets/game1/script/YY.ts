@@ -30,12 +30,13 @@ export function saveData(key: string, data: any) {
     storageManager.set(key, data);
 }
 export async function getData() {
-    // storageManager.clear(); // todo：后面干掉
+    storageManager.clear(); // todo：后面干掉
     // 关卡
     const levelId = storageManager.get('levelId', '0_1');
     player.setLevelId(levelId);
     // 背包
     const items = storageManager.get('items', JSON.stringify({coin: 1000,}));
+    logger.logModel(`items: ${items}`);
     player.setItems(JSON.parse(items));
     // 等级
     player.level =storageManager.getNumber('level');

@@ -78,19 +78,34 @@ export class UIPlay extends VMParentView {
 
     protected onLoad() {
         super.onLoad();
-        const canvas = director.getScene()!.getComponent(Canvas);
-        canvas.node.on('size-changed', this.onScreenResize, this);
+        // 延迟获取 Canvas，确保场景已完全初始化
+        this.scheduleOnce(() => {
+            const scene = director.getScene();
+            if (!scene) {
+                console.warn('Scene not found');
+                return;
+            }
+            const canvas = scene.getComponent(Canvas);
+            if (canvas) {
+                canvas.node.on('size-changed', this.onScreenResize, this);
+            } else {
+                console.warn('Canvas component not found on scene');
+            }
+        }, 0);
     }
 
     protected onDestroy() {
         // 清理事件监听
-        const canvas = director.getScene()?.getComponent(Canvas);
-        if (canvas) {
-            canvas.node.targetOff(this);
+        const scene = director.getScene();
+        if (scene) {
+            const canvas = scene.getComponent(Canvas);
+            if (canvas) {
+                canvas.node.targetOff(this);
+            }
         }
 
         // 清理定时器
-        this.clearAllTimers();
+        this.unscheduleAllCallbacks();
 
         // 清理tween动画
         this.clearAllTweens();

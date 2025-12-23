@@ -1,5 +1,6 @@
 import {_decorator, director, sys} from 'cc';
 import {storageManager}  from 'db://assets/libs/storage/StorageManager';
+import {SimpleStorageSecurity} from 'db://assets/libs/storage/SimpleStorageSecurity';
 import {languageManager} from "db://assets/libs/language/Language";
 import {HotUpdate} from "db://assets/libs/hotupate/HotUpdate";
 import {HotUpdateWeb} from "db://assets/libs/hotupate/HotUpdateWeb";
@@ -29,10 +30,8 @@ export class Loading extends VMParent {
 
     onLoad() {
         super.onLoad();
-        // todo：使用英文
-        storageManager.set('language', 'en');
-        LanguageLabel.defaultFontId = `alk-life-webfont`;
-        //
+        // 初始化存储加密
+        storageManager.init(new SimpleStorageSecurity());
         const language = storageManager.get('language', 'en');
         languageManager.setLanguage('', language).then((_) => {
             // 开始热梗
