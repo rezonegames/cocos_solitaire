@@ -23,9 +23,11 @@ import {UndoManager} from './UndoManager';
 import {AutoSolver} from "./AutoSolver";
 import {WinAnimation} from "./WinAnimation";
 import {logger} from "db://assets/libs/log/Logger";
-import {Player, UIID} from "db://assets/game1/script/YY";
+import {Player} from "db://assets/game1/script/Data";
 import {VM} from "db://assets/libs/modelview/ViewModel";
 import {uiManager, UIManager} from "db://assets/libs/ui/UIManager";
+import {LanguageLabel} from "db://assets/libs/language/LanguageLabel";
+import {UIID} from "db://assets/game1/script/YY";
 
 const {ccclass, property} = _decorator;
 
@@ -36,7 +38,9 @@ export class UIPlay extends VMParentView {
         score: 0,
         totalTimeString: '00:00',
         moves: 0,
-        levelId: ''
+        levelId: '',
+        autoString: 'ui_auto',
+        remainMagic: 0,
     }
     scoreDetail = {}
     lastTotalTime = 0
@@ -76,7 +80,7 @@ export class UIPlay extends VMParentView {
     // 玩家数据
     private player = VM.get<Player>('player').$data;
 
-    protected onLoad() {
+    onLoad() {
         super.onLoad();
         // 延迟获取 Canvas，确保场景已完全初始化
         this.scheduleOnce(() => {
@@ -783,19 +787,25 @@ export class UIPlay extends VMParentView {
     /** 测试用的，可以自动跑 */
     async onAutoSolve() {
         if (this.autoSolver.isRunning()) {
+            this.data.autoString = 'ui_auto';
             this.autoSolver.stop();
         } else {
+            this.data.autoString = 'ui_stop';
             await this.autoSolver.start();
         }
     }
 
+    addMagicAndSaveLifeOneCard(value) {
+        this.data.remainMagic += value;
+        this.autoSolver.saveLifeOneCard();
+    }
+
     onMagic() {
-        // this.shuffleAndRetry()
-        if (!this.player.addItems({'coin': -100})) {
-            // uiManager.open(UIID.UIMagic, this);
+        if(this.data.remainMagic <= 0) {
+            uiManager.open(UIID.UIMagicWand, this);
             return;
         }
-        this.autoSolver.saveLifeOneCard();
+        this.addMagicAndSaveLifeOneCard(-1)
     }
 
     onPause() {

@@ -1,4 +1,4 @@
-import { _decorator, Component, Node } from 'cc';
+import {_decorator} from 'cc';
 import {UIView} from "db://assets/libs/ui/UIView";
 import {UIPlay} from "db://assets/game1/script/logic/UIPlay";
 import {uiManager} from "db://assets/libs/ui/UIManager";

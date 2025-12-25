@@ -1,10 +1,11 @@
 import {_decorator, Component, Node} from 'cc';
 import _ from 'lodash-es';
 import {uiManager} from "db://assets/libs/ui/UIManager";
-import {Player, UIID} from "db://assets/game1/script/YY";
+import {UIID} from "db://assets/game1/script/YY";
 import {VM} from "db://assets/libs/modelview/ViewModel";
 import VMParentView from "db://assets/libs/gui/VMParentView";
 import {logger} from "db://assets/libs/log/Logger";
+import {Player} from "db://assets/game1/script/Data";
 
 const {ccclass, property} = _decorator;
 
@@ -23,7 +24,7 @@ export class UIWin extends VMParentView {
         levelId: '',
     }
 
-    player: Player = VM.get<Player>('player').$data;
+    player = VM.get<Player>('player').$data;
 
     init(...args: any) {
         const v = args[0];

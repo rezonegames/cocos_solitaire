@@ -29,7 +29,7 @@ export default class VMParentView extends UIView {
      ```
      *
      */
-    protected onLoad() {
+    onLoad() {
         if (this.data == null) return;
         this.tag = '_temp' + '<' + this.node.uuid.replace('.', '') + '>';
         VM.add(this.data, this.tag);

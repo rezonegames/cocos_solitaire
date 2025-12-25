@@ -4,7 +4,7 @@ import {Card, suits} from './Card';
 import {ResUtil} from "db://assets/libs/res/ResUtil";
 import {logger} from "db://assets/libs/log/Logger";
 import {VM} from "db://assets/libs/modelview/ViewModel";
-import {GlobalData, Player} from "db://assets/game1/script/YY";
+import {GlobalData, Player} from "db://assets/game1/script/Data";
 
 const {ccclass, property} = _decorator;
 
