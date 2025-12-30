@@ -35,7 +35,7 @@ export class UIMagicWand extends UIView {
             return;
         }
         this.playing.addMagicAndSaveLifeOneCard(this.magicValue - 1);
-        this.onOK();
+        this.onClose();
     }
 
     onWatchADS() {
@@ -45,8 +45,8 @@ export class UIMagicWand extends UIView {
         });
     }
 
-    onOK() {
-        uiManager.close(this);
+    onClose(): any {
+        uiManager.close(this)
     }
 }
 

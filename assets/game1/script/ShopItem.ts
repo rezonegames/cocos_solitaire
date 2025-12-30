@@ -1,4 +1,4 @@
-import {_decorator, SpriteFrame, SpriteAtlas} from 'cc';
+import {_decorator, SpriteFrame, SpriteAtlas, Sprite, Button} from 'cc';
 import VMParent from "db://assets/libs/modelview/VMParent";
 import {resLoader} from "db://assets/libs/res/ResLoader";
 import {bundleName} from "db://assets/game1/script/YY";
@@ -27,39 +27,73 @@ export class ShopItem extends VMParent {
     }
     player = VM.get<Player>('player').$data;
 
-    @property(SpriteFrame)
-    icon: SpriteFrame = null!
+    @property(Sprite) icon: Sprite = null!
+    @property(Sprite) bg: Sprite = null!
+    @property(Button) btnBuy: Button = null!
 
-    async init(item) {
+    /*
+    {
+    "name": 100.0,
+    "price_type": "ad",
+    "price": 0.0,
+    "count_down": 0.0,
+    "image": "coin01"
+  }
+     */
+    async init(item: any) {
+        console.log('ShopItem init called, this:', this, item); // 调试日志
+        
+        if (!this || !this.data) {
+            console.error('ShopItem this 为空或数据不存在');
+            return;
+        }
+
         // ID
         this.data.itemId = item.itemId;
+        
         // 图片
         if (!cardAtlasCache) {
             try {
                 cardAtlasCache = await resLoader.loadAsync(bundleName, 'texture/pop_shop/pop_shop_atlas', SpriteAtlas);
             } catch (e) {
+                console.error('加载图集失败:', e);
                 cardAtlasCache = null;
             }
         }
-        if (cardAtlasCache) {
-            this.icon = cardAtlasCache.getSpriteFrame(item.image);
+
+        async function f(sprite, image) {
+            const spriteFrame = cardAtlasCache.getSpriteFrame(image)
+            if (!spriteFrame) {
+                sprite.spriteFrame = await resLoader.loadAsync(bundleName, `texture/pop_shop/${image}/spriteFrame`, SpriteFrame);
+            }
         }
+
+        f(this.icon, item.image);
+        
         // 价格
-        switch (item.priceType) {
+        switch (item.price_type) {
             case "subscribe":
                 this.data.name = `ui_vip`;
                 this.data.buyStr = `ui_subscribe`;
-                break
+                f(this.bg, `shop_item_bg_vip`);
+                f(this.btnBuy.getComponent(Sprite), `button_lv_134`);
+                break;
             case "ad":
-                this.data.name = item.price;
+                this.data.name = item.name;
                 this.data.buyStr = `ui_free`;
-                break
+                f(this.bg, `shop_item_bg`);
+                f(this.btnBuy.getComponent(Sprite), `button_hui_134`);
+                break;
             default:
-                this.data.name = `${item.count}`
+                this.data.name = `${item.name}`;
                 this.data.buyStr = `US$${item.price}`;
+                f(this.bg, `shop_item_bg`);
+                f(this.btnBuy.getComponent(Sprite), `button_lv_134`);
         }
+        
         // 折扣
-        if(this.data.countDown > 0) {
+        if (item.count_down > 0) {
+            this.data.countDown = item.count_down;
             this.data.countDownStr = `+${(1 + item.count_down) * 100}%`;
         }
     }

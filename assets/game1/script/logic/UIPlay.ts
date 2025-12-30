@@ -803,6 +803,7 @@ export class UIPlay extends VMParentView {
     onMagic() {
         if(this.data.remainMagic <= 0) {
             uiManager.open(UIID.UIMagicWand, this);
+            logger.logView(`魔法值不足，无法使用！`);
             return;
         }
         this.addMagicAndSaveLifeOneCard(-1)

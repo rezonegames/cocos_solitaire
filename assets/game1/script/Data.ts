@@ -10,20 +10,21 @@ import {delay} from "db://assets/libs/utils/Utils";
  * @param data
  */
 export function saveData(key: string, data: any) {
-    if(_.isObject(data)) data = JSON.stringify(data)
+    if (_.isObject(data)) data = JSON.stringify(data)
     storageManager.set(key, data);
 }
+
 export async function getData() {
-    // storageManager.clear(); // todo：后面干掉
+    storageManager.clear(); // todo：后面干掉
     // 关卡
     const levelId = storageManager.get('levelId', '0_1');
     player.setLevelId(levelId);
     // 背包
-    const items = storageManager.get('items', JSON.stringify({coin: 1000,}));
+    const items = storageManager.get('items', JSON.stringify({coin: 10,}));
     logger.logModel(`items: ${items}`);
     player.setItems(JSON.parse(items));
     // 等级
-    player.level =storageManager.getNumber('level');
+    player.level = storageManager.getNumber('level');
     // 经验
     player.exp = storageManager.getNumber('exp');
     // 最大经验
@@ -76,6 +77,7 @@ export class Player {
         saveData('maxExp', this.maxExp);
         saveData('level', this.level);
     }
+
     private async animateExpGain(targetExp: number) {
         const startExp = this.exp;
         const duration = Math.min(1000, targetExp * 10); // 最多1秒，每点经验10ms
@@ -88,6 +90,7 @@ export class Player {
         }
         this.exp = startExp + targetExp; // 确保最终值正确
     }
+
     private async checkAndHandleLevelUp(globalData: GlobalData) {
         while (true) {
             const expConfig = globalData.getExpConfig(this.level);
@@ -119,6 +122,7 @@ export class Player {
     setLevelId(levelId: string) {
         this.levelId = levelId;
     }
+
     setNextLevelId() {
         const globalData = VM.get<GlobalData>('globalData').$data;
         const [kind, subLevel] = this.levelId.split('_');
@@ -129,8 +133,8 @@ export class Player {
         if (!newSubLevel) {
             newKind = `${Number(kind) + 1}`;
             const newConfigList = globalData.levelConfig[newKind];
-            if(!newConfigList) return logger.trace(`newConfigList is null: ${newKind}`);
-            newSubLevel =newConfigList[0].k;
+            if (!newConfigList) return logger.trace(`newConfigList is null: ${newKind}`);
+            newSubLevel = newConfigList[0].k;
         }
         this.addItems({coin: 10});
         this.levelId = `${newKind}_${newSubLevel}`;
@@ -145,13 +149,18 @@ export class Player {
         })
         logger.logModel(`items: ${JSON.stringify(this.items)}`)
     }
+
     addItems(items: any): boolean {
-        _.forEach(items, (v, k) => {
-            if(this.items[k] + v < 0) {
-                return false
+        for (const k in items) {
+            const v = items[k];
+            if ((this.items[k] || 0) + v < 0) {
+                return false;
             }
-            this.items[k] += v;
-        })
+        }
+        for (const k in items) {
+            const v = items[k];
+            this.items[k] = (this.items[k] || 0) + v;
+        }
         saveData('items', this.items);
         return true;
     }

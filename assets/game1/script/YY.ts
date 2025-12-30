@@ -69,10 +69,12 @@ export class GameInstance {
             [UIID.UILogin]: {bundle, prefab: 'prefab/Login'},
             [UIID.UISelectGame]: {bundle, prefab: 'prefab/SelectGame'},
             [UIID.UIPlay]: {bundle, prefab: 'prefab/Play'},
-            [UIID.UIPause]: {bundle, prefab: 'prefab/Pause'},
-            [UIID.UIWin]: {bundle, prefab: 'prefab/Win'},
-            [UIID.UILose]: {bundle, prefab: 'prefab/Lose'},
-            [UIID.UILevelUp]: {bundle, prefab: 'prefab/LevelUp'},
+            [UIID.UIPause]: {bundle, prefab: 'prefab/Pause', preventTouch: true},
+            [UIID.UIWin]: {bundle, prefab: 'prefab/Win', preventTouch: true},
+            [UIID.UILose]: {bundle, prefab: 'prefab/Lose', preventTouch: true},
+            [UIID.UILevelUp]: {bundle, prefab: 'prefab/LevelUp', preventTouch: true},
+            [UIID.UIMagicWand]: {bundle, prefab: 'prefab/MagicWand', preventTouch: true},
+            [UIID.UIShop]: {bundle, prefab: 'prefab/Shop', preventTouch: true},
         })
         uiManager.open(UIID.UIBackGround);
         uiManager.open(UIID.UILogin);

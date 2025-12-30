@@ -137,7 +137,7 @@ export class UIManager {
     private playPopupAnimation(uiView: UIView, callback: () => void) {
         const node = uiView.node;
         node.setScale(0, 0, 1);
-        
+        // @ts-ignore
         import('cc').then(({ tween, Vec3 }) => {
             tween(node)
                 .to(0.2, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'backOut' })
@@ -149,7 +149,7 @@ export class UIManager {
 
     private playCloseAnimation(uiView: UIView, callback: () => void) {
         const node = uiView.node;
-        
+        // @ts-ignore
         import('cc').then(({ tween, Vec3 }) => {
             tween(node)
                 .to(0.15, { scale: new Vec3(0, 0, 1) }, { easing: 'backIn' })

@@ -58,11 +58,13 @@ def excel_to_json():
             price_type = table.cell(i, 2).value
             price = table.cell(i, 3).value
             count_down = table.cell(i, 4).value
+            image = table.cell(i, 5).value
             shop[item_id] = {
                 'name': name,
                 'price_type': price_type,
                 'price': price,
                 'count_down': count_down,
+                'image': image
             }
         write_json(f'../assets/{bundle_name}/config/shop.json', shop)
     write_shop('game1-shop', data)

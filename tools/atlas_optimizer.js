@@ -82,7 +82,10 @@ class AtlasOptimizer {
             'pop_levelup',
             'pop_pause',
             'pop_win',
-            'touxiang'
+            'touxiang',
+            'pop_shop',
+            'pop_setting',
+            'pop_magic_wand'
         ];
 
         textureDirs.forEach(dir => {
