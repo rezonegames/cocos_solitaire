@@ -806,7 +806,7 @@ export class UIPlay extends VMParentView {
             logger.logView(`魔法值不足，无法使用！`);
             return;
         }
-        this.addMagicAndSaveLifeOneCard(-1)
+        this.addMagicAndSaveLifeOneCard(-1);
     }
 
     onPause() {

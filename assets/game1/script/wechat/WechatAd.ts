@@ -21,21 +21,39 @@ export class WechatAd {
     
     init() {
         if (sys.platform !== sys.Platform.WECHAT_GAME) return;
-        this.createRewardedVideoAd();
+        // 延迟初始化，确保游戏环境已准备好
+        setTimeout(() => {
+            this.createRewardedVideoAd();
+        }, 100);
     }
     
     showBannerAd() {
         if (sys.platform !== sys.Platform.WECHAT_GAME) return;
         
-        if (!this.bannerAd) {
-            const {windowWidth, windowHeight} = wx.getSystemInfoSync();
-            this.bannerAd = wx.createBannerAd({
-                adUnitId: this.adUnitIds.banner,
-                style: {left: 0, top: windowHeight - 100, width: windowWidth}
+        try {
+            if (!this.bannerAd) {
+                const systemInfo = wx.getSystemInfoSync();
+                if (!systemInfo) return;
+                
+                const {windowWidth, windowHeight} = systemInfo;
+                this.bannerAd = wx.createBannerAd({
+                    adUnitId: this.adUnitIds.banner,
+                    style: {left: 0, top: windowHeight - 100, width: windowWidth}
+                });
+                
+                this.bannerAd.onError((err: any) => {
+                    console.error('横幅广告失败:', err);
+                    this.bannerAd = null;
+                });
+            }
+            this.bannerAd?.show().catch((err: any) => {
+                console.error('显示横幅广告失败:', err);
+                this.bannerAd = null;
             });
-            this.bannerAd.onError((err: any) => console.error('横幅广告失败:', err));
+        } catch (e) {
+            console.error('创建横幅广告异常:', e);
+            this.bannerAd = null;
         }
-        this.bannerAd.show().catch((err: any) => console.error('显示横幅广告失败:', err));
     }
     
     hideBannerAd() {
@@ -45,23 +63,43 @@ export class WechatAd {
     showInterstitialAd() {
         if (sys.platform !== sys.Platform.WECHAT_GAME) return;
         
-        if (!this.interstitialAd) {
-            this.interstitialAd = wx.createInterstitialAd({
-                adUnitId: this.adUnitIds.interstitial
+        try {
+            if (!this.interstitialAd) {
+                this.interstitialAd = wx.createInterstitialAd({
+                    adUnitId: this.adUnitIds.interstitial
+                });
+                this.interstitialAd.onError((err: any) => {
+                    console.error('插屏广告失败:', err);
+                    this.interstitialAd = null;
+                });
+            }
+            this.interstitialAd?.show().catch(() => {
+                this.interstitialAd?.load();
             });
-            this.interstitialAd.onError((err: any) => console.error('插屏广告失败:', err));
+        } catch (e) {
+            console.error('创建插屏广告异常:', e);
+            this.interstitialAd = null;
         }
-        this.interstitialAd.show().catch(() => this.interstitialAd.load());
     }
     
     private createRewardedVideoAd() {
         if (!wx.createRewardedVideoAd) return;
         
-        this.rewardedVideoAd = wx.createRewardedVideoAd({
-            adUnitId: this.adUnitIds.rewarded
-        });
-        this.rewardedVideoAd.onError((err: any) => console.error('激励视频失败:', err));
-        this.rewardedVideoAd.load();
+        try {
+            this.rewardedVideoAd = wx.createRewardedVideoAd({
+                adUnitId: this.adUnitIds.rewarded
+            });
+            this.rewardedVideoAd.onError((err: any) => {
+                console.error('激励视频失败:', err);
+                this.rewardedVideoAd = null;
+            });
+            this.rewardedVideoAd.load().catch((err: any) => {
+                console.error('加载激励视频失败:', err);
+            });
+        } catch (e) {
+            console.error('创建激励视频异常:', e);
+            this.rewardedVideoAd = null;
+        }
     }
     
     showRewardedVideoAd(onRewarded: () => void): Promise<boolean> {

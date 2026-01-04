@@ -1237,7 +1237,7 @@
     "holdSprite": {
       "__id__": 31
     },
-    "isFaceUp": false,
+    "_isFaceUp": false,
     "_id": ""
   },
   {

@@ -31,6 +31,21 @@ export class ShopItem extends VMParent {
     @property(Sprite) bg: Sprite = null!
     @property(Button) btnBuy: Button = null!
 
+
+    protected async onLoad() {
+        super.onLoad();
+
+        // 图片
+        if (!cardAtlasCache) {
+            try {
+                cardAtlasCache = await resLoader.loadAsync(bundleName, 'texture/pop_shop/pop_shop_atlas', SpriteAtlas);
+            } catch (e) {
+                console.error('加载图集失败:', e);
+                cardAtlasCache = null;
+            }
+        }
+    }
+
     /*
     {
     "name": 100.0,
@@ -50,21 +65,24 @@ export class ShopItem extends VMParent {
 
         // ID
         this.data.itemId = item.itemId;
-        
-        // 图片
-        if (!cardAtlasCache) {
-            try {
-                cardAtlasCache = await resLoader.loadAsync(bundleName, 'texture/pop_shop/pop_shop_atlas', SpriteAtlas);
-            } catch (e) {
-                console.error('加载图集失败:', e);
-                cardAtlasCache = null;
-            }
-        }
 
         async function f(sprite, image) {
-            const spriteFrame = cardAtlasCache.getSpriteFrame(image)
-            if (!spriteFrame) {
+            if (!sprite || !image) return;
+            
+            // 尝试从图集获取
+            if (cardAtlasCache) {
+                const spriteFrame = cardAtlasCache.getSpriteFrame(image);
+                if (spriteFrame) {
+                    sprite.spriteFrame = spriteFrame;
+                    return;
+                }
+            }
+            
+            // 降级为单图加载
+            try {
                 sprite.spriteFrame = await resLoader.loadAsync(bundleName, `texture/pop_shop/${image}/spriteFrame`, SpriteFrame);
+            } catch (e) {
+                console.error(`加载图片失败: ${image}`, e);
             }
         }
 
@@ -96,6 +114,9 @@ export class ShopItem extends VMParent {
             this.data.countDown = item.count_down;
             this.data.countDownStr = `+${(1 + item.count_down) * 100}%`;
         }
+
+        this.data.count = item.count;
+        this.data.priceType = item.price_type;
     }
 
     onBuy() {

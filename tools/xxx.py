@@ -64,7 +64,8 @@ def excel_to_json():
                 'price_type': price_type,
                 'price': price,
                 'count_down': count_down,
-                'image': image
+                'image': image,
+                'count': name,
             }
         write_json(f'../assets/{bundle_name}/config/shop.json', shop)
     write_shop('game1-shop', data)
